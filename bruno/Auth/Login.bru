@@ -1,0 +1,31 @@
+meta {
+  name: Login
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/login
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "identifier": "L&L_1002",
+    "password": "$KR2ggtT9d"
+  }
+}
+
+script:post-response {
+  if (res.body.accessToken) {
+    bru.setEnvVar("token", res.body.accessToken);
+  }
+  if (res.body.tempToken) {
+    bru.setEnvVar("tempToken", res.body.tempToken);
+  }
+}

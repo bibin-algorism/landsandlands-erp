@@ -1,0 +1,42 @@
+{
+  "name": "intelligent-erp",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@12.4.1",
+  "scripts": {
+    "dev": "pnpm --filter \"./apps/*\" --parallel run dev",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md,yml}\"",
+    "prepare": "husky",
+    "db:migrate": "dotenv -e apps/api/.env -- prisma migrate dev --schema=apps/api/prisma/schema.prisma",
+    "db:deploy": "dotenv -e apps/api/.env -- prisma migrate deploy --schema=apps/api/prisma/schema.prisma",
+    "db:push": "dotenv -e apps/api/.env -- prisma db push --schema=apps/api/prisma/schema.prisma",
+    "db:generate": "prisma generate --schema=apps/api/prisma/schema.prisma"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml}": [
+      "prettier --write"
+    ]
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "dotenv-cli": "^8.0.0",
+    "eslint": "^9.0.0",
+    "husky": "^9.0.0",
+    "lint-staged": "^15.2.0",
+    "prettier": "^3.2.0",
+    "prisma": "5.22.0",
+    "turbo": "^2.0.0",
+    "typescript": "^5.4.0",
+    "typescript-eslint": "^8.0.0"
+  },
+  "dependencies": {
+    "@prisma/client": "5.22.0"
+  }
+}

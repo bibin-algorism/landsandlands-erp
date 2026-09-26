@@ -1,0 +1,284 @@
+// apps/api/prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  ON_HOLD
+  SUSPENDED
+  PENDING_ONBOARDING
+}
+
+enum StakeholderType {
+  EMPLOYEE
+  CLIENT
+  VENDOR
+  PARTNER
+}
+
+enum ResetRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum AuthActivityType {
+  LOGIN_SUCCESS
+  LOGIN_FAILED
+  LOGOUT
+  RESET_REQUESTED
+  RESET_APPROVED
+  PASSWORD_CHANGED
+  USER_CREATED
+}
+
+enum GovtIdType {
+  AADHAAR
+  PAN
+  PASSPORT
+  DRIVING_LICENSE
+  VOTER_ID
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum OnboardingStatus {
+  INITIATED
+  ADMIN_COMPLETED
+  EMPLOYEE_IN_PROGRESS
+  PENDING_APPROVAL
+  COMPLETED
+  REJECTED
+}
+
+enum OnboardingStepName {
+  PERSONAL_INFO
+  PAYROLL
+  GOVT_DOCS
+  EMERGENCY_CONTACTS
+}
+
+model User {
+  id                   String               @id @default(uuid())
+  identifier           String               @unique // Employee Code e.g. "L&L_58392"
+  stakeholderType      StakeholderType      @default(EMPLOYEE)
+  passwordHash         String
+  status               UserStatus           @default(ACTIVE)
+  mustChangePassword   Boolean              @default(false)
+  
+  failedLoginAttempts  Int                  @default(0)
+  lockedUntil          DateTime?
+  
+  lastLoginAt          DateTime?
+  lastPasswordChangeAt DateTime?
+
+  passwordHistories     PasswordHistory[]
+  resetRequests         PasswordResetRequest[] @relation("UserResetRequests")
+  actionedResetRequests PasswordResetRequest[] @relation("AdminActionedResets")
+  activityLogs          AuthActivityLog[]
+  profile               Profile?
+  employee              Employee?
+
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
+  @@map("users")
+}
+
+model PasswordHistory {
+  id           String   @id @default(uuid())
+  userId       String
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_histories")
+}
+
+model PasswordResetRequest {
+  id           String             @id @default(uuid())
+  identifier   String
+  userId       String?
+  reason       String
+  status       ResetRequestStatus @default(PENDING)
+  
+  actionedById String?
+  actionNote   String?
+  tempPassword String?
+
+  requestedAt  DateTime           @default(now())
+  actionedAt   DateTime?
+
+  user         User?              @relation("UserResetRequests", fields: [userId], references: [id])
+  actionedBy   User?              @relation("AdminActionedResets", fields: [actionedById], references: [id])
+
+  @@index([identifier, status])
+  @@map("password_reset_requests")
+}
+
+model AuthActivityLog {
+  id         String           @id @default(uuid())
+  userId     String?
+  identifier String
+  action     AuthActivityType
+  ipAddress  String?
+  userAgent  String?
+  metadata   Json?
+  createdAt  DateTime         @default(now())
+
+  user       User?            @relation(fields: [userId], references: [id])
+
+  @@index([identifier])
+  @@index([createdAt])
+  @@map("auth_activity_logs")
+}
+
+model OutboxEvent {
+  id            String    @id @default(uuid())
+  eventType     String
+  aggregateType String
+  aggregateId   String
+  payload       Json
+  processed     Boolean   @default(false)
+  processedAt   DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([processed, createdAt])
+  @@map("outbox_events")
+}
+
+model Profile {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  firstName   String?
+  lastName    String?
+  email       String?
+  phone       String?
+  avatarUrl   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("profiles")
+}
+
+model Employee {
+  id                   String                  @id @default(uuid())
+  userId               String                  @unique
+  employeeCode         String                  @unique
+  designation          String?
+  department           String?
+  joiningDate          DateTime?
+  employmentType       String?                 @default("FULL_TIME")
+
+  user                 User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profile              EmployeeProfile?
+  payrollDetail        EmployeePayrollDetail?
+  governmentIds        EmployeeGovernmentId[]
+  emergencyContacts    EmergencyContact[]
+  onboardingWorkflow   OnboardingWorkflow?
+
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+
+  @@map("employees")
+}
+
+model EmployeeProfile {
+  id               String    @id @default(uuid())
+  employeeId       String    @unique
+  dateOfBirth      DateTime?
+  gender           String?
+  maritalStatus    String?
+  bloodGroup       String?
+  currentAddress   String?
+  permanentAddress String?
+  personalEmail    String?
+  personalPhone    String?
+  avatarUrl        String?
+
+  employee         Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@map("employee_profiles")
+}
+
+model EmployeePayrollDetail {
+  id            String   @id @default(uuid())
+  employeeId    String   @unique
+  panNumber     String?
+  bankName      String?
+  accountNumber String?
+  ifscCode      String?
+  pfNumber      String?
+  uanNumber     String?
+
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("employee_payroll_details")
+}
+
+model EmployeeGovernmentId {
+  id                 String             @id @default(uuid())
+  employeeId         String
+  idType             GovtIdType
+  idNumber           String
+  documentUrl        String?
+  verificationStatus VerificationStatus @default(PENDING)
+
+  employee           Employee           @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@index([employeeId])
+  @@map("employee_government_ids")
+}
+
+model EmergencyContact {
+  id             String   @id @default(uuid())
+  employeeId     String
+  name           String
+  relationship   String
+  phone          String
+  alternatePhone String?
+  isPrimary      Boolean  @default(false)
+
+  employee       Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([employeeId])
+  @@map("emergency_contacts")
+}
+
+model OnboardingWorkflow {
+  id                 String             @id @default(uuid())
+  employeeId         String             @unique
+  status             OnboardingStatus   @default(INITIATED)
+  currentStep        OnboardingStepName @default(PERSONAL_INFO)
+  initiatedByAdminId String?
+  completedAt        DateTime?
+
+  employee           Employee           @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@map("onboarding_workflows")
+}

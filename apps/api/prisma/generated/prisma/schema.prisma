@@ -1,0 +1,144 @@
+// apps/api/prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "./generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  ON_HOLD
+  SUSPENDED
+}
+
+enum StakeholderType {
+  EMPLOYEE
+  CLIENT
+  VENDOR
+  PARTNER
+}
+
+enum ResetRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum AuthActivityType {
+  LOGIN_SUCCESS
+  LOGIN_FAILED
+  LOGOUT
+  RESET_REQUESTED
+  RESET_APPROVED
+  PASSWORD_CHANGED
+}
+
+model User {
+  id                 String          @id @default(uuid())
+  identifier         String          @unique // Employee Code e.g. "L&L_58392"
+  stakeholderType    StakeholderType @default(EMPLOYEE)
+  passwordHash       String
+  status             UserStatus      @default(ACTIVE)
+  mustChangePassword Boolean         @default(false)
+
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+
+  lastLoginAt          DateTime?
+  lastPasswordChangeAt DateTime?
+
+  passwordHistories     PasswordHistory[]
+  resetRequests         PasswordResetRequest[] @relation("UserResetRequests")
+  actionedResetRequests PasswordResetRequest[] @relation("AdminActionedResets")
+  activityLogs          AuthActivityLog[]
+  profile               Profile?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+model PasswordHistory {
+  id           String   @id @default(uuid())
+  userId       String
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_histories")
+}
+
+model PasswordResetRequest {
+  id         String             @id @default(uuid())
+  identifier String
+  userId     String?
+  reason     String
+  status     ResetRequestStatus @default(PENDING)
+
+  actionedById String?
+  actionNote   String?
+  tempPassword String?
+
+  requestedAt DateTime  @default(now())
+  actionedAt  DateTime?
+
+  user       User? @relation("UserResetRequests", fields: [userId], references: [id])
+  actionedBy User? @relation("AdminActionedResets", fields: [actionedById], references: [id])
+
+  @@index([identifier, status])
+  @@map("password_reset_requests")
+}
+
+model AuthActivityLog {
+  id         String           @id @default(uuid())
+  userId     String?
+  identifier String
+  action     AuthActivityType
+  ipAddress  String?
+  userAgent  String?
+  metadata   Json?
+  createdAt  DateTime         @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([identifier])
+  @@index([createdAt])
+  @@map("auth_activity_logs")
+}
+
+model OutboxEvent {
+  id            String    @id @default(uuid())
+  eventType     String
+  aggregateType String
+  aggregateId   String
+  payload       Json
+  processed     Boolean   @default(false)
+  processedAt   DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([processed, createdAt])
+  @@map("outbox_events")
+}
+
+model Profile {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  firstName String?
+  lastName  String?
+  email     String?
+  phone     String?
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("profiles")
+}
