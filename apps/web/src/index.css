@@ -1,111 +1,128 @@
-:root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Karma:wght@400;600;700&display=swap');
+@import "tailwindcss";
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+@theme {
+  --font-karma: 'Karma', serif;
+  --font-inter: 'Inter', sans-serif;
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --color-bg-default: #ffffff;
+  --color-bg-subtle: #FAF9F7;
+  --color-surface-card: #ffffff;
 
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+  --color-text-primary: #1A1A1A;
+  --color-text-secondary: #524C45;
+  --color-text-disabled: #B6AEA3;
+
+  --color-border-default: #E7E3DD;
+  --color-border-strong: #91887D;
+
+  --color-brand-accent: #FEC74E;
+
+  --color-success: #039855;
+  --color-warning: #F25520;
+  --color-error: #D92D20;
+  --color-info: #1570EF;
+
+  --color-status-available: #12B76A;
+  --color-status-on-hold: #F25520;
+  --color-status-booked: #2E90FA;
+  --color-status-sold: #35312D;
+  --color-status-registered: #6938EF;
+  --color-status-maintenance: #6F675E;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
+@utility text-display {
+  font-family: var(--font-karma);
+  font-size: 44px;
+  line-height: 54px;
+  font-weight: 700;
+  letter-spacing: 0px;
 }
 
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
+@utility text-h1 {
+  font-family: var(--font-karma);
+  font-size: 36px;
+  line-height: 46px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
 }
 
-body {
-  margin: 0;
+@utility text-h2 {
+  font-family: var(--font-karma);
+  font-size: 30px;
+  line-height: 40px;
+  font-weight: 600;
+  letter-spacing: 0px;
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
+@utility text-h3 {
+  font-family: var(--font-karma);
+  font-size: 26px;
+  line-height: 36px;
+  font-weight: 600;
+  letter-spacing: 0px;
+}
+
+@utility text-h4 {
+  font-family: var(--font-karma);
+  font-size: 22px;
+  line-height: 30px;
+  font-weight: 600;
+  letter-spacing: 0px;
+}
+
+@utility text-body-large {
+  font-family: var(--font-inter);
+  font-size: 18px;
+  line-height: 28px;
+  font-weight: 400;
+  letter-spacing: 0px;
+}
+
+@utility text-body-medium {
+  font-family: var(--font-inter);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+  letter-spacing: 0px;
+}
+
+@utility text-body-small {
+  font-family: var(--font-inter);
+  font-size: 14px;
+  line-height: 22px;
+  font-weight: 400;
+  letter-spacing: 0px;
+}
+
+@utility text-label {
+  font-family: var(--font-inter);
+  font-size: 13px;
+  line-height: 18px;
   font-weight: 500;
-  color: var(--text-h);
+  letter-spacing: 0px;
 }
 
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
-  margin: 0;
+@utility text-caption {
+  font-family: var(--font-inter);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 400;
+  letter-spacing: 0px;
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+@utility text-table-text {
+  font-family: var(--font-inter);
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 400;
+  letter-spacing: 0px;
 }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+@utility text-number {
+  font-family: var(--font-inter);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  letter-spacing: 0px;
 }
