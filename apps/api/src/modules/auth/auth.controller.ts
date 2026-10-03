@@ -1,14 +1,16 @@
 import {
   Body,
   Controller,
+  ForbiddenException,
   Get,
   HttpCode,
   HttpStatus,
   Param,
   Post,
   Req,
-  UseGuards,
+  UnauthorizedException,
 } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { AdminActionResetDto } from './dto/admin-action-reset.dto';
@@ -20,7 +22,10 @@ import { RequestResetDto } from './dto/request-reset.dto';
 @ApiTags('Authentication')
 @Controller('api/v1/auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly jwtService: JwtService,
+  ) {}
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
@@ -53,13 +58,52 @@ export class AuthController {
 
   @Post('change-password')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Change password (enforces no password reuse)' })
+  @ApiOperation({ summary: 'Change password with identity verification & no password reuse' })
   @ApiResponse({ status: 200, description: 'Password updated successfully' })
+  @ApiResponse({ status: 401, description: 'Invalid current password or authentication token' })
+  @ApiResponse({ status: 403, description: 'Identity mismatch or account restricted' })
   @ApiResponse({ status: 400, description: 'Password reuse prohibited or invalid format' })
   async changePassword(@Body() dto: ChangePasswordDto, @Req() req: any) {
-    // Note: userId can be extracted from JWT payload in req.user
-    const userId = req.user?.sub || req.user?.id;
-    return this.authService.changePassword(userId, dto);
+    const ipAddress = req.ip || req.headers?.['x-forwarded-for'];
+    const userAgent = req.headers?.['user-agent'];
+
+    let authenticatedUserId: string | null = null;
+    let authenticatedIdentifier: string | null = null;
+
+    // Extract Bearer token if provided
+    const authHeader = req.headers?.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      try {
+        const payload = await this.jwtService.verifyAsync(token);
+        authenticatedUserId = payload.sub || payload.id;
+        authenticatedIdentifier = payload.identifier;
+      } catch {
+        throw new UnauthorizedException('Authentication token expired or invalid');
+      }
+    }
+
+    // Security check: If both token and dto.identifier exist, ensure they match
+    if (
+      authenticatedIdentifier &&
+      dto.identifier &&
+      authenticatedIdentifier !== dto.identifier
+    ) {
+      throw new ForbiddenException(
+        'Identity mismatch: Cannot change password for another employee account',
+      );
+    }
+
+    // Resolve target identity
+    const targetIdentity = authenticatedUserId || authenticatedIdentifier || dto.identifier;
+
+    if (!targetIdentity) {
+      throw new UnauthorizedException(
+        'Authentication required: Provide a valid Bearer token or Employee Code identifier',
+      );
+    }
+
+    return this.authService.changePassword(targetIdentity, dto, ipAddress, userAgent);
   }
 
   @Get('admin/reset-requests')

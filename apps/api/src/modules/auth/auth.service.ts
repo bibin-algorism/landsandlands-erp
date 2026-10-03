@@ -370,15 +370,21 @@ export class AuthService {
     };
   }
 
-  // FR-AUTH-07: Change password (with no password reuse validation)
-  async changePassword(userId: string, dto: ChangePasswordDto) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
+  // FR-AUTH-07: Change password (with identity lookup & strict no password reuse validation)
+  async changePassword(userKey: string, dto: ChangePasswordDto, ipAddress?: string, userAgent?: string) {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        OR: [{ id: userKey }, { identifier: userKey }],
+      },
       include: { passwordHistories: true },
     });
 
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException('User account not found');
+    }
+
+    if (user.status === UserStatus.SUSPENDED) {
+      throw new ForbiddenException('Account has been suspended. Please contact administrator.');
     }
 
     const isCurrentValid = await this.passwordHashService.verifyPassword(
@@ -387,15 +393,30 @@ export class AuthService {
     );
 
     if (!isCurrentValid) {
-      throw new UnauthorizedException('Current/temporary password is incorrect');
+      await this.logActivity(user.id, user.identifier, AuthActivityType.LOGIN_FAILED, ipAddress, userAgent, {
+        action: 'CHANGE_PASSWORD_FAILED',
+        reason: 'Invalid current/temporary password',
+      });
+      throw new UnauthorizedException('Current or temporary password is incorrect');
+    }
+
+    // Verify new password complexity: minimum 8 characters, at least 1 letter and 1 number
+    if (
+      dto.newPassword.length < 8 ||
+      !/[A-Za-z]/.test(dto.newPassword) ||
+      !/\d/.test(dto.newPassword)
+    ) {
+      throw new BadRequestException(
+        'New password must be at least 8 characters long and contain at least one letter and one number',
+      );
     }
 
     // Check if new password matches current password
     if (await this.passwordHashService.verifyPassword(user.passwordHash, dto.newPassword)) {
-      throw new BadRequestException('New password cannot be the same as your current password');
+      throw new BadRequestException('New password cannot be the same as your current/temporary password');
     }
 
-    // FR-AUTH-07: Check against password histories (no reuse)
+    // FR-AUTH-07: Check against password histories (no reuse allowed)
     for (const history of user.passwordHistories) {
       const matchesHistory = await this.passwordHashService.verifyPassword(
         history.passwordHash,
@@ -420,11 +441,15 @@ export class AuthService {
         },
       });
 
+      // Reactivate account if ON_HOLD and clear password change flags
       await tx.user.update({
         where: { id: user.id },
         data: {
           passwordHash: newHash,
           mustChangePassword: false,
+          status: UserStatus.ACTIVE,
+          failedLoginAttempts: 0,
+          lockedUntil: null,
           lastPasswordChangeAt: new Date(),
         },
       });
@@ -442,7 +467,9 @@ export class AuthService {
       });
     });
 
-    return { message: 'Password changed successfully. You can now log in with your new password.' };
+    await this.logActivity(user.id, user.identifier, AuthActivityType.PASSWORD_CHANGED, ipAddress, userAgent);
+
+    return { success: true, message: 'Password changed successfully. You can now log in with your new password.' };
   }
 
   // Helper method for seeding / admin user creation

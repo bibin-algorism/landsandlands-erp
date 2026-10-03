@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "packageManager": "pnpm@12.4.1",
   "scripts": {
-    "dev": "pnpm --filter \"./apps/*\" --parallel run dev",
+    "dev": "pnpm --filter @landsandlands/shared build && pnpm --filter api --filter web --parallel dev",
     "build": "turbo run build",
     "test": "turbo run test",
     "lint": "turbo run lint",

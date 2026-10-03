@@ -8,15 +8,17 @@
   --color-bg-default: #ffffff;
   --color-bg-subtle: #FAF9F7;
   --color-surface-card: #ffffff;
+  --color-bg-canvas: #F3F1ED;
 
-  --color-text-primary: #1A1A1A;
-  --color-text-secondary: #524C45;
-  --color-text-disabled: #B6AEA3;
+  --color-primary: #1A1A1A;
+  --color-secondary: #524C45;
+  --color-disabled: #B6AEA3;
 
   --color-border-default: #E7E3DD;
   --color-border-strong: #91887D;
 
   --color-brand-accent: #FEC74E;
+  --color-brand-subtle: #FFF9EB;
 
   --color-success: #039855;
   --color-warning: #F25520;
