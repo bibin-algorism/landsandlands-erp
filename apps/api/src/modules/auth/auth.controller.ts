@@ -9,9 +9,12 @@ import {
   Post,
   Req,
   UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Permissions } from '../../common/guards/permissions.decorator';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { AuthService } from './auth.service';
 import { AdminActionResetDto } from './dto/admin-action-reset.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
@@ -107,12 +110,16 @@ export class AuthController {
   }
 
   @Get('admin/reset-requests')
+  @UseGuards(PermissionsGuard)
+  @Permissions('password_resets:read')
   @ApiOperation({ summary: 'List pending password reset requests for Password-Reset Admin' })
   async getPendingResetRequests() {
     return this.authService.getPendingResetRequests();
   }
 
   @Post('admin/reset-password')
+  @UseGuards(PermissionsGuard)
+  @Permissions('password_resets:write')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Approve/Reject reset request and generate temporary password' })
   @ApiResponse({ status: 200, description: 'Request actioned successfully' })
@@ -122,6 +129,8 @@ export class AuthController {
   }
 
   @Post('admin/users')
+  @UseGuards(PermissionsGuard)
+  @Permissions('users:write')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Provision new user account with initial credentials & profile from Admin console' })
   @ApiResponse({ status: 201, description: 'User account created successfully' })

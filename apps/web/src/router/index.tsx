@@ -19,9 +19,20 @@ export default function AppRouter() {
         <Route path="/set-password" element={<ResetPassword />} />
         <Route path="/design-system" element={<Home />} />
 
-        {/* Protected Routes */}
+        {/* Protected Base Routes */}
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<Dashboard />} />
+        </Route>
+
+        {/* Admin Restricted Routes */}
+        <Route
+          element={
+            <ProtectedRoute
+              allowedRoles={['SUPER_ADMIN', 'ADMIN', 'HR_ADMIN']}
+              requiredPermission="password_resets:read"
+            />
+          }
+        >
           <Route path="/people/password-resets" element={<PasswordResetsPage />} />
           <Route path="/people/password-reset-requests" element={<PasswordResetsPage />} />
         </Route>

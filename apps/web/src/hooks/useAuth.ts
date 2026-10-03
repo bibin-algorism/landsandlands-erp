@@ -1,7 +1,14 @@
 import { useMutation } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { authService } from '../services/auth.service'
-import type { ChangePasswordPayload, ChangePasswordResponse, LoginCredentials, LoginResponse } from '../api/types'
+import type {
+  ChangePasswordPayload,
+  ChangePasswordResponse,
+  LoginCredentials,
+  LoginResponse,
+  RequestResetPayload,
+  RequestResetResponse,
+} from '../api/types'
 
 export function useLogin() {
   const navigate = useNavigate()
@@ -24,6 +31,21 @@ export function useLogin() {
   return {
     login: mutation.mutate,
     loginAsync: mutation.mutateAsync,
+    isPending: mutation.isPending,
+    isError: mutation.isError,
+    error: mutation.error?.message || null,
+    reset: mutation.reset,
+  }
+}
+
+export function useRequestReset() {
+  const mutation = useMutation<RequestResetResponse, Error, RequestResetPayload>({
+    mutationFn: (payload) => authService.requestReset(payload),
+  })
+
+  return {
+    requestReset: mutation.mutate,
+    requestResetAsync: mutation.mutateAsync,
     isPending: mutation.isPending,
     isError: mutation.isError,
     error: mutation.error?.message || null,

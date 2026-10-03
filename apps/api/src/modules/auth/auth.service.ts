@@ -112,7 +112,13 @@ export class AuthService {
 
     // 24h session token (FR-AUTH-03)
     const accessToken = this.jwtService.sign(
-      { sub: user.id, identifier: user.identifier, stakeholderType: user.stakeholderType },
+      {
+        sub: user.id,
+        identifier: user.identifier,
+        stakeholderType: user.stakeholderType,
+        role: user.role,
+        permissions: user.permissions,
+      },
       { expiresIn: '24h' },
     );
 
@@ -123,12 +129,27 @@ export class AuthService {
         id: user.id,
         identifier: user.identifier,
         stakeholderType: user.stakeholderType,
+        role: user.role,
+        permissions: user.permissions,
       },
     };
   }
 
   // FR-AUTH-04 & FR-AUTH-08 & FR-AUTH-11: Request password reset
   async requestReset(dto: RequestResetDto, ipAddress?: string, userAgent?: string) {
+    const existingPending = await this.prisma.passwordResetRequest.findFirst({
+      where: {
+        identifier: dto.identifier,
+        status: ResetRequestStatus.PENDING,
+      },
+    });
+
+    if (existingPending) {
+      throw new BadRequestException(
+        'A password reset request is already pending for this account. Please wait for administrative approval.'
+      );
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { identifier: dto.identifier },
     });
@@ -137,6 +158,20 @@ export class AuthService {
 
     if (user) {
       userId = user.id;
+
+      const existingUserPending = await this.prisma.passwordResetRequest.findFirst({
+        where: {
+          userId: user.id,
+          status: ResetRequestStatus.PENDING,
+        },
+      });
+
+      if (existingUserPending) {
+        throw new BadRequestException(
+          'A password reset request is already pending for this account. Please wait for administrative approval.'
+        );
+      }
+
       // FR-AUTH-08: Put account ON_HOLD
       await this.prisma.user.update({
         where: { id: user.id },
@@ -195,6 +230,19 @@ export class AuthService {
           select: {
             id: true,
             status: true,
+            profile: {
+              select: {
+                firstName: true,
+                lastName: true,
+                phone: true,
+              },
+            },
+            employee: {
+              select: {
+                designation: true,
+                department: true,
+              },
+            },
           },
         },
       },
@@ -283,6 +331,7 @@ export class AuthService {
     return {
       success: true,
       identifier: request.identifier,
+      tempPassword,
       temporaryPassword: tempPassword,
       message:
         'Password reset approved. Provide this one-time temporary password to the user. User will be forced to change it on next login.',

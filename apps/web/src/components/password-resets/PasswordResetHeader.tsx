@@ -5,16 +5,22 @@ export interface PasswordResetHeaderProps {
 }
 
 export default function PasswordResetHeader({
-  pendingCount = 5,
-  doneTodayCount = '2/7',
-  attentionText = '3 need attention now — 2 waiting over a day.',
+  pendingCount = 0,
+  doneTodayCount = '7/7',
+  attentionText,
 }: PasswordResetHeaderProps) {
+  const subtitle =
+    attentionText ||
+    (pendingCount === 0
+      ? 'No requests waiting right now.'
+      : `${pendingCount} request${pendingCount === 1 ? '' : 's'} awaiting administrative action.`)
+
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6">
       {/* Title & Subtitle */}
       <div className="text-left space-y-1">
-        <h1 className="text-h2 text-primary font-bold">Password reset requests</h1>
-        <p className="text-body-small text-secondary">{attentionText}</p>
+        <h1 className="text-h2 text-primary font-bold font-serif">Password reset requests</h1>
+        <p className="text-body-small text-secondary">{subtitle}</p>
       </div>
 
       {/* Counter Cards */}

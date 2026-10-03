@@ -6,10 +6,14 @@ export interface ApiResponse<T = unknown> {
   statusCode?: number
 }
 
+export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'HR_ADMIN' | 'EMPLOYEE'
+
 export interface UserProfile {
   id: string
   identifier: string
   stakeholderType: string
+  role?: UserRole
+  permissions?: string[]
   status?: string
 }
 
@@ -22,6 +26,8 @@ export interface UserSummary {
   id: string
   identifier: string
   stakeholderType: string
+  role?: UserRole
+  permissions?: string[]
 }
 
 export interface LoginSuccessResponse {
@@ -64,7 +70,30 @@ export interface PasswordResetRequestData {
   user?: {
     id: string
     status: string
+    profile?: {
+      firstName?: string
+      lastName?: string
+      phone?: string
+    }
+    employee?: {
+      designation?: string
+      department?: string
+    }
   }
+}
+
+export interface AdminActionResetPayload {
+  requestId: string
+  action: 'APPROVED' | 'REJECTED'
+  note?: string
+}
+
+export interface AdminActionResetResponse {
+  success: boolean
+  message: string
+  tempPassword?: string
+  temporaryPassword?: string
+  identifier?: string
 }
 
 export interface ChangePasswordPayload {

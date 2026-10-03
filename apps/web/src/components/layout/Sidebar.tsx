@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { useLogout } from '../../hooks/useAuth'
 import { logoFull } from '../../utils/images'
 import { MENU_ITEMS, type MenuItem, type SubMenuItem } from '../../constants/sidebar'
+import type { UserSummary, UserRole } from '../../api/types'
 
 export default function Sidebar() {
   const location = useLocation()
@@ -10,6 +11,31 @@ export default function Sidebar() {
 
   // Track explicit user toggle actions per parent menu ID
   const [userToggled, setUserToggled] = useState<Record<string, boolean>>({})
+
+  // Read logged-in user details from localStorage
+  const currentUser: UserSummary | null = (() => {
+    try {
+      const raw = localStorage.getItem('user_info')
+      return raw ? JSON.parse(raw) : null
+    } catch {
+      return null
+    }
+  })()
+
+  const userRole: UserRole = currentUser?.role || 'EMPLOYEE'
+  const userPermissions = currentUser?.permissions || []
+
+  const hasAccess = (item: { requiredRoles?: UserRole[]; requiredPermission?: string }) => {
+    if (userRole === 'SUPER_ADMIN' || userPermissions.includes('*')) return true
+    if (item.requiredRoles && item.requiredRoles.length > 0) {
+      if (!item.requiredRoles.includes(userRole)) return false
+    }
+    if (item.requiredPermission && !userPermissions.includes(item.requiredPermission)) {
+      if (item.requiredRoles && item.requiredRoles.includes(userRole)) return true
+      return false
+    }
+    return true
+  }
 
   const isPathActive = (path?: string) => {
     if (!path) return false
@@ -29,7 +55,7 @@ export default function Sidebar() {
   const isParentActive = (item: MenuItem) => {
     if (item.path && isPathActive(item.path)) return true
     if (item.children) {
-      return item.children.some((child) => isSubItemActive(child))
+      return item.children.some((child) => hasAccess(child) && isSubItemActive(child))
     }
     return false
   }
@@ -52,8 +78,9 @@ export default function Sidebar() {
 
           {/* Main Navigation from Constants */}
           <nav className="space-y-1 text-body-small font-medium">
-            {MENU_ITEMS.map((item) => {
-              const hasChildren = item.children && item.children.length > 0
+            {MENU_ITEMS.filter(hasAccess).map((item) => {
+              const visibleChildren = item.children?.filter(hasAccess) || []
+              const hasChildren = visibleChildren.length > 0
               const parentActive = isParentActive(item)
 
               // Expanded if explicitly toggled ON, or if it contains an active sub-item
@@ -98,7 +125,7 @@ export default function Sidebar() {
                     {/* Collapsible Sub-menu */}
                     {isExpanded && (
                       <div className="mt-1 ml-4 space-y-1 text-body-small animate-in fade-in duration-150">
-                        {item.children?.map((child) => {
+                        {visibleChildren.map((child) => {
                           const active = isSubItemActive(child)
                           const isExternalLink = child.path.startsWith('#')
 
@@ -116,7 +143,9 @@ export default function Sidebar() {
                                 )}
                                 <div className={`flex items-center gap-2.5 ${active ? 'pl-2' : ''}`}>
                                   {child.icon}
-                                  <span className={active ? "text-primary text-label" : "text-secondary hover:text-primary hover:bg-bg-subtle text-body-small"}>{child.label}</span>
+                                  <span className={active ? 'text-primary text-label' : 'text-secondary hover:text-primary hover:bg-bg-subtle text-body-small'}>
+                                    {child.label}
+                                  </span>
                                 </div>
                               </div>
                               {child.badgeCount !== undefined && (
@@ -195,11 +224,15 @@ export default function Sidebar() {
           <div className="flex items-center justify-between p-2 rounded-xl bg-bg-subtle border border-border-default">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-full bg-[#E0EAFF] text-[#3538CD] font-semibold text-caption flex items-center justify-center">
-                DN
+                {currentUser?.identifier?.slice(-2).toUpperCase() || 'US'}
               </div>
               <div className="text-left leading-tight">
-                <div className="text-caption font-semibold text-primary">Deepa N</div>
-                <div className="text-[11px] text-secondary">HR · Reset admin</div>
+                <div className="text-caption font-semibold text-primary">
+                  {currentUser?.identifier || 'User'}
+                </div>
+                <div className="text-[11px] text-secondary capitalize">
+                  {userRole.replace('_', ' ').toLowerCase()}
+                </div>
               </div>
             </div>
             <button

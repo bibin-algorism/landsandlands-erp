@@ -1,4 +1,5 @@
 import React from 'react'
+import type { UserRole } from '../api/types'
 
 export interface SubMenuItem {
   id: string
@@ -6,6 +7,8 @@ export interface SubMenuItem {
   path: string
   badgeCount?: number
   icon?: React.ReactNode
+  requiredRoles?: UserRole[]
+  requiredPermission?: string
 }
 
 export interface MenuItem {
@@ -13,6 +16,8 @@ export interface MenuItem {
   label: string
   path?: string
   icon?: React.ReactNode
+  requiredRoles?: UserRole[]
+  requiredPermission?: string
   children?: SubMenuItem[]
 }
 
@@ -76,6 +81,8 @@ export const MENU_ITEMS: MenuItem[] = [
         label: 'Password resets',
         path: '/people/password-reset-requests',
         badgeCount: 5,
+        requiredRoles: ['SUPER_ADMIN', 'ADMIN', 'HR_ADMIN'],
+        requiredPermission: 'password_resets:read',
         icon: (
           <svg className="w-3.5 h-3.5 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
@@ -86,6 +93,7 @@ export const MENU_ITEMS: MenuItem[] = [
         id: 'roles',
         label: 'Roles & access',
         path: '#roles',
+        requiredRoles: ['SUPER_ADMIN', 'ADMIN'],
       },
     ],
   },

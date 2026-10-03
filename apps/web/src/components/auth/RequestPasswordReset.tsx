@@ -1,8 +1,11 @@
 import React, { useState } from 'react'
+import ErrorAlert from '../ErrorAlert'
 
 export interface RequestPasswordResetProps {
   initialEmpCode?: string
   onSubmitRequest?: (data: { empCode: string; reason: string; notes: string }) => void
+  isPending?: boolean
+  error?: string | null
 }
 
 const REASON_OPTIONS = [
@@ -13,19 +16,32 @@ const REASON_OPTIONS = [
 ]
 
 export default function RequestPasswordReset({
-  initialEmpCode = '48213',
+  initialEmpCode = '',
   onSubmitRequest,
+  isPending = false,
+  error = null,
 }: RequestPasswordResetProps) {
   const [empCode, setEmpCode] = useState(initialEmpCode)
   const [selectedReason, setSelectedReason] = useState(REASON_OPTIONS[0])
   const [notes, setNotes] = useState('')
+  const [localValidationErr, setLocalValidationErr] = useState<string | null>(null)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    setLocalValidationErr(null)
+
+    const cleanCode = empCode.trim()
+    if (!cleanCode) {
+      setLocalValidationErr('Please enter your 5-digit employee code.')
+      return
+    }
+
     if (onSubmitRequest) {
-      onSubmitRequest({ empCode, reason: selectedReason, notes })
+      onSubmitRequest({ empCode: cleanCode, reason: selectedReason, notes })
     }
   }
+
+  const activeError = localValidationErr || error
 
   return (
     <div className="space-y-6 text-left">
@@ -36,6 +52,8 @@ export default function RequestPasswordReset({
           HR will set a temporary password for you. Your account stays paused until then.
         </p>
       </div>
+
+      {activeError && <ErrorAlert title="Action Blocked" message={activeError} />}
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -52,10 +70,11 @@ export default function RequestPasswordReset({
               id="resetEmpCode"
               type="text"
               required
+              disabled={isPending}
               value={empCode}
               onChange={(e) => setEmpCode(e.target.value)}
               placeholder="5-digit number"
-              className="w-full px-3 py-2 text-secondary text-body-small placeholder:text-disabled outline-none bg-transparent"
+              className="w-full px-3 py-2 text-secondary text-body-small placeholder:text-disabled outline-none bg-transparent disabled:opacity-50"
             />
           </div>
         </div>
@@ -71,12 +90,12 @@ export default function RequestPasswordReset({
               return (
                 <label
                   key={option}
-                  onClick={() => setSelectedReason(option)}
+                  onClick={() => !isPending && setSelectedReason(option)}
                   className={`flex items-center gap-3 p-3 rounded-lg border transition-colors cursor-pointer select-none ${
                     isSelected
                       ? 'bg-[#FFFAEB] border-brand-accent'
                       : 'bg-bg-default border-border-default hover:border-border-strong'
-                  }`}
+                  } ${isPending ? 'opacity-50 pointer-events-none' : ''}`}
                 >
                   <div
                     className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
@@ -106,19 +125,21 @@ export default function RequestPasswordReset({
           <textarea
             id="notes"
             rows={3}
+            disabled={isPending}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="e.g. I'm at the Trichy site office today"
-            className="w-full border border-border-default rounded-lg p-3 text-body-small text-primary placeholder:text-disabled outline-none focus:border-border-strong bg-bg-default resize-none transition-colors"
+            className="w-full border border-border-default rounded-lg p-3 text-body-small text-primary placeholder:text-disabled outline-none focus:border-border-strong bg-bg-default resize-none transition-colors disabled:opacity-50"
           />
         </div>
 
         {/* Submit Button */}
         <button
           type="submit"
-          className="w-full py-2.5 px-4 mt-2 bg-brand-accent text-primary text-label font-medium rounded-lg hover:opacity-90 transition-opacity cursor-pointer shadow-xs"
+          disabled={isPending}
+          className="w-full py-2.5 px-4 mt-2 bg-brand-accent text-primary text-label font-medium rounded-lg hover:opacity-90 transition-opacity cursor-pointer shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Send request to HR
+          {isPending ? 'Sending request...' : 'Send request to HR'}
         </button>
       </form>
     </div>

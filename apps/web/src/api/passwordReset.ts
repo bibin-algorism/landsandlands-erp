@@ -1,22 +1,21 @@
 import { apiClient } from './client'
-import type { ApiResponse, PasswordResetRequestData } from './types'
+import type {
+  AdminActionResetPayload,
+  AdminActionResetResponse,
+  PasswordResetRequestData,
+} from './types'
 
 export const passwordResetApi = {
   async getResetRequests(): Promise<PasswordResetRequestData[]> {
-    const response = await apiClient.get<ApiResponse<PasswordResetRequestData[]>>(
-      '/people/password-resets'
-    )
-    return response.data.data || []
+    const response = await apiClient.get<PasswordResetRequestData[]>('/auth/admin/reset-requests')
+    return response.data || []
   },
 
-  async generateTempPassword(requestId: string): Promise<{ tempPassword: string }> {
-    const response = await apiClient.post<ApiResponse<{ tempPassword: string }>>(
-      `/people/password-resets/${requestId}/generate-temp-password`
+  async adminActionReset(payload: AdminActionResetPayload): Promise<AdminActionResetResponse> {
+    const response = await apiClient.post<AdminActionResetResponse>(
+      '/auth/admin/reset-password',
+      payload
     )
-    return response.data.data!
-  },
-
-  async rejectRequest(requestId: string, reason?: string): Promise<void> {
-    await apiClient.post(`/people/password-resets/${requestId}/reject`, { reason })
+    return response.data
   },
 }
