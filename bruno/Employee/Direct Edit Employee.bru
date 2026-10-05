@@ -1,0 +1,29 @@
+meta {
+  name: Direct Edit Employee
+  type: http
+  seq: 8
+}
+
+put {
+  url: {{baseUrl}}/api/v1/employees/{{employeeId}}/direct-edit
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "fieldUpdates": {
+      "officialPhone": "+919876540099",
+      "probationPeriod": "3 Months"
+    },
+    "reason": "Probation reduced due to prior relevant experience"
+  }
+}

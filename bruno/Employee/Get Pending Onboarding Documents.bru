@@ -1,0 +1,15 @@
+meta {
+  name: Get Pending Onboarding Documents
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/api/v1/employees/onboarding/pending-documents
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

@@ -1,0 +1,36 @@
+meta {
+  name: Upload Documents
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/employees/{{employeeId}}/documents
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "educationalDocuments": [
+      {
+        "qualificationLevel": "10TH",
+        "frontImageUrl": "https://storage.landsandlands.com/docs/rahul/10th_front.jpg",
+        "backImageUrl": "https://storage.landsandlands.com/docs/rahul/10th_back.jpg"
+      },
+      {
+        "qualificationLevel": "UG_DEGREE",
+        "frontImageUrl": "https://storage.landsandlands.com/docs/rahul/ug_degree_front.jpg",
+        "backImageUrl": "https://storage.landsandlands.com/docs/rahul/ug_degree_back.jpg"
+      }
+    ]
+  }
+}

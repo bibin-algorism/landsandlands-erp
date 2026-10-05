@@ -1,0 +1,41 @@
+meta {
+  name: Create Change Request
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/v1/employees/change-requests
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "fields": [
+      {
+        "fieldName": "personalPhone",
+        "proposedValue": "+919988776655",
+        "proofDocumentUrl": "https://storage.landsandlands.com/docs/rahul/phone_bill_proof.pdf"
+      },
+      {
+        "fieldName": "currentAddress",
+        "proposedValue": "789 Indiranagar 100ft Road, Bangalore - 560038"
+      }
+    ]
+  }
+}
+
+script:post-response {
+  if (res.body.id) {
+    bru.setEnvVar("changeRequestId", res.body.id);
+  }
+}

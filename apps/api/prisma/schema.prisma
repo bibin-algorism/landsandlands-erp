@@ -9,6 +9,10 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ==========================================
+// ENUMS
+// ==========================================
+
 enum UserStatus {
   ACTIVE
   ON_HOLD
@@ -39,54 +43,95 @@ enum AuthActivityType {
   USER_CREATED
 }
 
-enum GovtIdType {
-  AADHAAR
-  PAN
-  PASSPORT
-  DRIVING_LICENSE
-  VOTER_ID
-}
-
-enum VerificationStatus {
-  PENDING
-  VERIFIED
-  REJECTED
-}
-
-enum OnboardingStatus {
-  INITIATED
-  ADMIN_COMPLETED
-  EMPLOYEE_IN_PROGRESS
-  PENDING_APPROVAL
-  COMPLETED
-  REJECTED
-}
-
-enum OnboardingStepName {
-  PERSONAL_INFO
-  PAYROLL
-  GOVT_DOCS
-  EMERGENCY_CONTACTS
-}
-
 enum UserRole {
   SUPER_ADMIN
   ADMIN
   HR_ADMIN
+  VERTICAL_HEAD
   EMPLOYEE
 }
 
+enum EmploymentStatus {
+  ACTIVE
+  TERMINATED
+}
+
+enum EmployeeRole {
+  MANAGING_DIRECTOR
+  COO
+  MANAGEMENT_ADMIN
+  VERTICAL_HEAD
+  EXECUTIVE
+}
+
+enum JobType {
+  PERMANENT
+  TEMPORARY
+  CONTRACT
+}
+
+enum QualificationLevel {
+  NONE
+  TENTH
+  TWELFTH
+  UG_DEGREE
+  PG_DEGREE
+}
+
+enum PreviousOrgDocStatus {
+  BOTH
+  ONE
+  NONE
+}
+
+enum EmployeeBackground {
+  FRESHER
+  FREELANCER
+  ENTREPRENEUR
+}
+
+enum ChangeRequestStatus {
+  PENDING_HR_REVIEW
+  QUERY_SENT
+  APPROVED
+  REJECTED
+}
+
+enum ChangeSource {
+  ONBOARDING
+  APPROVED_CHANGE_REQUEST
+  DIRECT_HR_EDIT
+  SYSTEM
+}
+
+enum AuditActionType {
+  REQUEST_RAISED
+  QUERY_SENT
+  QUERY_REPLIED
+  APPROVED
+  REJECTED
+  DIRECT_EDIT
+  RESIGNATION_RAISED
+  TERMINATION_RAISED
+  TERMINATION_APPROVED
+  REACTIVATION
+}
+
+// ==========================================
+// 1. AUTHENTICATION MODULE MODELS
+// ==========================================
+
 model User {
-  id                   String               @id @default(uuid())
-  identifier           String               @unique // Employee Code e.g. "L&L_58392"
-  stakeholderType      StakeholderType      @default(EMPLOYEE)
-  role                 UserRole             @default(EMPLOYEE)
-  permissions          String[]             @default([])
+  id                   String                 @id @default(uuid())
+  identifier           String                 @unique // Employee Code e.g. "LL-7K2Q9"
+  stakeholderType      StakeholderType        @default(EMPLOYEE)
+  role                 UserRole               @default(EMPLOYEE)
+  permissions          String[]               @default([])
   passwordHash         String
-  status               UserStatus           @default(ACTIVE)
-  mustChangePassword   Boolean              @default(false)
+  status               UserStatus             @default(PENDING_ONBOARDING)
+  mustChangePassword   Boolean                @default(false)
   
-  failedLoginAttempts  Int                  @default(0)
+  failedLoginAttempts  Int                    @default(0)
   lockedUntil          DateTime?
   
   lastLoginAt          DateTime?
@@ -99,8 +144,8 @@ model User {
   profile               Profile?
   employee              Employee?
 
-  createdAt            DateTime             @default(now())
-  updatedAt            DateTime             @updatedAt
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
 
   @@map("users")
 }
@@ -185,109 +230,319 @@ model Profile {
   @@map("profiles")
 }
 
+// ==========================================
+// 2. CORE EMPLOYEE MODULE MODELS
+// ==========================================
+
 model Employee {
-  id                   String                  @id @default(uuid())
-  userId               String                  @unique
-  employeeCode         String                  @unique
-  designation          String?
-  department           String?
-  joiningDate          DateTime?
-  employmentType       String?                 @default("FULL_TIME")
+  id                   String                        @id @default(uuid())
+  userId               String                        @unique
+  employeeId           String                        @unique // "LL-XXXXX" immutable system key
+  firstName            String                        // Sensitivity: Internal
+  lastName             String                        // Sensitivity: Internal
+  employmentStatus     EmploymentStatus              @default(ACTIVE) // Internal
+  
+  onboardingCompletedAt DateTime?
+  statusChangedOn      DateTime?
 
-  user                 User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  profile              EmployeeProfile?
-  payrollDetail        EmployeePayrollDetail?
-  governmentIds        EmployeeGovernmentId[]
+  // Relations
+  user                 User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  personalDetail       EmployeePersonalDetail?
+  communicationDetail  EmployeeCommunicationDetail?
   emergencyContacts    EmergencyContact[]
-  onboardingWorkflow   OnboardingWorkflow?
+  documentDetail       EmployeeDocument?
+  educationalDocuments EducationalDocument[]
+  employmentDetail     EmployeeEmploymentDetail?
+  probationDetail      EmployeeProbationDetail?
+  financialDetail      EmployeeFinancialDetail?
+  
+  // History & Audit Relations
+  transferHistories    VerticalTransferHistory[]
+  promotionHistories   PromotionHistory[]
+  payRevisionHistories PayRevisionHistory[]
+  appraisalHistories   AppraisalHistory[]
+  changeRequests       EmployeeChangeRequest[]
+  fieldHistories       EmployeeFieldHistory[]
+  auditLogs            EmployeeAuditLog[]            @relation("EmployeeSubjectAudit")
+  performedAuditLogs   EmployeeAuditLog[]            @relation("AuditPerformer")
+  
+  // Reporting Line Relations
+  subordinates         EmployeeEmploymentDetail[]    @relation("ReportingLine")
 
-  createdAt            DateTime                @default(now())
-  updatedAt            DateTime                @updatedAt
+  createdAt            DateTime                      @default(now())
+  updatedAt            DateTime                      @updatedAt
 
   @@map("employees")
 }
 
-model EmployeeProfile {
-  id               String    @id @default(uuid())
-  employeeId       String    @unique
-  dateOfBirth      DateTime?
-  gender           String?
-  maritalStatus    String?
-  bloodGroup       String?
-  currentAddress   String?
-  permanentAddress String?
-  personalEmail    String?
-  personalPhone    String?
-  avatarUrl        String?
+// 8.1 Personal Identity
+model EmployeePersonalDetail {
+  id            String    @id @default(uuid())
+  employeeId    String    @unique
+  dateOfBirth   DateTime  // Sensitivity: Confidential
+  gender        String    // Sensitivity: Confidential
+  bloodGroup    String    // Sensitivity: Confidential
+  maritalStatus String    // Sensitivity: Confidential
+  fatherName    String    // Sensitivity: Confidential
 
-  employee         Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  employee      Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-  @@map("employee_profiles")
+  @@map("employee_personal_details")
 }
 
-model EmployeePayrollDetail {
-  id            String   @id @default(uuid())
-  employeeId    String   @unique
-  panNumber     String?
-  bankName      String?
-  accountNumber String?
-  ifscCode      String?
-  pfNumber      String?
-  uanNumber     String?
+// 8.2 Communication Details
+model EmployeeCommunicationDetail {
+  id               String   @id @default(uuid())
+  employeeId       String   @unique
+  personalPhone    String   // Sensitivity: Confidential
+  secondaryPhone   String?  // Sensitivity: Confidential
+  officialPhone    String   // Sensitivity: Internal
+  personalEmail    String   // Sensitivity: Confidential
+  officialEmail    String   // Sensitivity: Internal
+  currentAddress   String   // Sensitivity: Confidential
+  permanentAddress String   // Sensitivity: Confidential
 
-  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  employee         Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  @@map("employee_payroll_details")
-}
-
-model EmployeeGovernmentId {
-  id                 String             @id @default(uuid())
-  employeeId         String
-  idType             GovtIdType
-  idNumber           String
-  documentUrl        String?
-  verificationStatus VerificationStatus @default(PENDING)
-
-  employee           Employee           @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
-
-  @@index([employeeId])
-  @@map("employee_government_ids")
+  @@map("employee_communication_details")
 }
 
 model EmergencyContact {
-  id             String   @id @default(uuid())
-  employeeId     String
-  name           String
-  relationship   String
-  phone          String
-  alternatePhone String?
-  isPrimary      Boolean  @default(false)
+  id           String   @id @default(uuid())
+  employeeId   String
+  name         String   // Sensitivity: Confidential
+  relationship String   // Sensitivity: Confidential
+  phone        String   // Sensitivity: Confidential
+  isPrimary    Boolean  @default(false)
 
-  employee       Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  employee     Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@index([employeeId])
   @@map("emergency_contacts")
 }
 
-model OnboardingWorkflow {
+// 8.3 Documentation
+model EmployeeDocument {
+  id                     String                @id @default(uuid())
+  employeeId             String                @unique
+  aadhaarNumber          String                // Sensitivity: Restricted
+  aadhaarFrontUrl        String?               // Sensitivity: Restricted
+  aadhaarBackUrl         String?               // Sensitivity: Restricted
+  drivingLicenceNumber   String                // Sensitivity: Restricted
+  drivingLicenceFrontUrl String?               // Sensitivity: Restricted
+  drivingLicenceBackUrl  String?               // Sensitivity: Restricted
+  highestQualification   QualificationLevel    // Sensitivity: Confidential
+  previousOrgDocStatus   PreviousOrgDocStatus? // Sensitivity: Confidential
+  secondDocDueDate       DateTime?             // 2 weeks to 1 month due date (BR-05)
+  isIncompleteFlag       Boolean               @default(false)
+  employeeBackground     EmployeeBackground?   // FRESHER | FREELANCER | ENTREPRENEUR
+  recordOfIncomeUrl      String?               // Sensitivity: Confidential
+
+  employee               Employee              @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+
+  @@map("employee_documents")
+}
+
+model EducationalDocument {
   id                 String             @id @default(uuid())
-  employeeId         String             @unique
-  status             OnboardingStatus   @default(INITIATED)
-  currentStep        OnboardingStepName @default(PERSONAL_INFO)
-  initiatedByAdminId String?
-  completedAt        DateTime?
+  employeeId         String
+  qualificationLevel QualificationLevel // 10TH, 12TH, UG_DEGREE, PG_DEGREE
+  frontImageUrl      String             // Sensitivity: Confidential
+  backImageUrl       String             // Sensitivity: Confidential
 
   employee           Employee           @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 
-  @@map("onboarding_workflows")
+  @@index([employeeId])
+  @@map("educational_documents")
+}
+
+// 8.4 Employment Details
+model EmployeeEmploymentDetail {
+  id                   String       @id @default(uuid())
+  employeeId           String       @unique
+  vertical             String       // 10 Business Verticals / 5 Functional Verticals (Internal)
+  role                 EmployeeRole // MD, COO, Vertical Head, Executive (Internal)
+  jobType              JobType      // Permanent, Temporary, Contract (Internal)
+  joiningDate          DateTime     // Sensitivity: Internal
+  reportingAuthorityId String?      // FK to Employee (Reporting Manager)
+  exitDate             DateTime?    // Sensitivity: Internal
+  exitReason           String?      // Sensitivity: Confidential
+
+  employee             Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  reportingAuthority   Employee?    @relation("ReportingLine", fields: [reportingAuthorityId], references: [id])
+
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+
+  @@map("employee_employment_details")
+}
+
+model EmployeeProbationDetail {
+  id                 String   @id @default(uuid())
+  employeeId         String   @unique
+  probationPeriod    String   // Probation duration (Confidential)
+  financialAgreement String   // Financial terms during probation (Confidential)
+
+  employee           Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("employee_probation_details")
+}
+
+// 8.5 Financial Details
+model EmployeeFinancialDetail {
+  id                   String    @id @default(uuid())
+  employeeId           String    @unique
+  accountNumber        String    // Sensitivity: Restricted
+  accountHolderName    String    // Sensitivity: Restricted
+  ifscCode             String    // Sensitivity: Restricted
+  branchName           String    // Sensitivity: Restricted
+  takeHomePayTotal     Decimal   // Sensitivity: Restricted
+  cashComponent        Decimal?  // Sensitivity: Restricted
+  bankComponent        Decimal?  // Sensitivity: Restricted
+  nextAppraisalWindow  DateTime  // Sensitivity: Restricted
+
+  employee             Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@map("employee_financial_details")
+}
+
+// Career History Logs
+model VerticalTransferHistory {
+  id            String   @id @default(uuid())
+  employeeId    String
+  fromVertical  String
+  toVertical    String
+  transferredAt DateTime @default(now())
+
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@map("vertical_transfer_histories")
+}
+
+model PromotionHistory {
+  id           String       @id @default(uuid())
+  employeeId   String
+  fromRole     EmployeeRole
+  toRole       EmployeeRole
+  promotedAt   DateTime     @default(now())
+
+  employee     Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@map("promotion_histories")
+}
+
+model PayRevisionHistory {
+  id            String   @id @default(uuid())
+  employeeId    String
+  previousPay   Decimal
+  newPay        Decimal
+  effectiveDate DateTime
+
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@map("pay_revision_histories")
+}
+
+model AppraisalHistory {
+  id              String   @id @default(uuid())
+  employeeId      String
+  appraisalWindow String
+  outcome         String
+  reviewedAt      DateTime @default(now())
+
+  employee        Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@map("appraisal_histories")
+}
+
+// ==========================================
+// 3. CHANGE REQUEST & AUDIT ENGINE
+// ==========================================
+
+model EmployeeChangeRequest {
+  id              String              @id @default(uuid())
+  employeeId      String
+  status          ChangeRequestStatus @default(PENDING_HR_REVIEW)
+  hrReviewerId    String?
+  queryReason     String?
+  rejectionReason String?
+  reviewDueDate   DateTime            // 24-hour SLA deadline (FR-22)
+
+  employee        Employee            @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  requestedFields ChangeRequestField[]
+
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@index([employeeId, status])
+  @@map("employee_change_requests")
+}
+
+model ChangeRequestField {
+  id               String                @id @default(uuid())
+  requestId        String
+  fieldName        String
+  currentValue     String
+  proposedValue    String
+  proofDocumentUrl String?               // Required attachment for fields needing proof (FR-17)
+
+  changeRequest    EmployeeChangeRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@map("change_request_fields")
+}
+
+// 8.7 Field Metadata & Versioning (BR-11)
+model EmployeeFieldHistory {
+  id                 String       @id @default(uuid())
+  employeeId         String
+  fieldName          String
+  oldValue           String?
+  newValue           String
+  changedById        String       // Employee ID of person who made change
+  changeSource       ChangeSource // ONBOARDING | APPROVED_CHANGE_REQUEST | DIRECT_HR_EDIT | SYSTEM
+
+  employee           Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  createdAt          DateTime     @default(now())
+
+  @@index([employeeId, fieldName])
+  @@map("employee_field_histories")
+}
+
+// System Audit Log (FR-40)
+model EmployeeAuditLog {
+  id            String          @id @default(uuid())
+  actionId      String          @unique @default(uuid())
+  actionType    AuditActionType
+  performedById String
+  employeeId    String
+  reason        String?
+  metadata      Json?
+
+  employee      Employee        @relation("EmployeeSubjectAudit", fields: [employeeId], references: [id])
+  performedBy   Employee        @relation("AuditPerformer", fields: [performedById], references: [id])
+
+  performedAt   DateTime        @default(now())
+
+  @@index([employeeId])
+  @@index([performedAt])
+  @@map("employee_audit_logs")
 }

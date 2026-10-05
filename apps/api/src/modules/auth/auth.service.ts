@@ -239,8 +239,12 @@ export class AuthService {
             },
             employee: {
               select: {
-                designation: true,
-                department: true,
+                employmentDetail: {
+                  select: {
+                    role: true,
+                    vertical: true,
+                  },
+                },
               },
             },
           },

@@ -1,0 +1,19 @@
+meta {
+  name: List Employees
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/employees?vertical=PRIMARY
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+params:query {
+  vertical: PRIMARY
+}

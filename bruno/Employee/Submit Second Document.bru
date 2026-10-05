@@ -1,0 +1,26 @@
+meta {
+  name: Submit Second Document
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/api/v1/employees/{{employeeId}}/second-document
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "previousOrgDocStatus": "RELIEVING_LETTER_ONLY",
+    "recordOfIncomeUrl": "https://storage.landsandlands.com/docs/rahul/previous_org_relieving.pdf"
+  }
+}
