@@ -5,7 +5,7 @@ export interface DeactivatedAccountProps {
 }
 
 export default function DeactivatedAccount({
-  empCode = 'L&L_48213',
+  empCode = 'LL_48213',
   onBackToSignIn,
   onContactHR,
 }: DeactivatedAccountProps) {

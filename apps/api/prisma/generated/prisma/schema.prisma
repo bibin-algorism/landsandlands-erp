@@ -40,7 +40,7 @@ enum AuthActivityType {
 
 model User {
   id                 String          @id @default(uuid())
-  identifier         String          @unique // Employee Code e.g. "L&L_58392"
+  identifier         String          @unique // Employee Code e.g. "LL_58392"
   stakeholderType    StakeholderType @default(EMPLOYEE)
   passwordHash       String
   status             UserStatus      @default(ACTIVE)

@@ -66,14 +66,6 @@ export class EmployeeService {
           role: UserRole.EMPLOYEE,
           status: UserStatus.ACTIVE,
           mustChangePassword: true,
-          profile: {
-            create: {
-              firstName: dto.firstName,
-              lastName: dto.lastName,
-              email: dto.officialEmail,
-              phone: dto.officialPhone,
-            },
-          },
         },
       });
 

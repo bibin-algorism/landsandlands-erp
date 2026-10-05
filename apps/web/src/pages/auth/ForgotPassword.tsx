@@ -17,9 +17,9 @@ export default function ForgotPassword() {
 
   const handleSubmitRequest = async (data: { empCode: string; reason: string; notes: string }) => {
     const rawEmpCode = data.empCode.trim()
-    const formattedIdentifier = rawEmpCode.startsWith('L&L_')
+    const formattedIdentifier = rawEmpCode.startsWith('LL_')
       ? rawEmpCode
-      : `L&L_${rawEmpCode}`
+      : `LL_${rawEmpCode}`
 
     let fullReason = data.reason
     if (data.notes && data.notes.trim()) {
@@ -65,7 +65,7 @@ export default function ForgotPassword() {
         />
       ) : (
         <PasswordResetSubmitted
-          empCode={resetData.empCode.startsWith('L&L_') ? resetData.empCode : `L&L_${resetData.empCode}`}
+          empCode={resetData.empCode.startsWith('LL_') ? resetData.empCode : `LL_${resetData.empCode}`}
           reason={resetData.reason}
           onBackToSignIn={() => navigate('/login')}
         />

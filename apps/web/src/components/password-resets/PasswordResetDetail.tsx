@@ -69,7 +69,7 @@ export default function PasswordResetDetail({
     const fullName = `${activeReq.user?.profile?.firstName || ''} ${activeReq.user?.profile?.lastName || ''}`.trim() || activeReq.identifier
     const firstName = activeReq.user?.profile?.firstName || fullName.split(' ')[0] || 'Employee'
     const designation = activeReq.user?.employee?.designation || 'Sales executive'
-    const adminName = currentUser?.identifier ? `${currentUser.identifier}` : 'Deepa N · L&L_65021'
+    const adminName = currentUser?.identifier ? `${currentUser.identifier}` : 'Deepa N · LL_65021'
     const formattedPass = passToDisplay.length >= 8
       ? `${passToDisplay.slice(0, 4)} – ${passToDisplay.slice(4, 8)}${passToDisplay.length > 8 ? ` – ${passToDisplay.slice(8)}` : ''}`
       : passToDisplay
@@ -318,19 +318,17 @@ export default function PasswordResetDetail({
           </div>
 
           <div
-            className={`p-4 rounded-xl border transition-colors flex items-center justify-between gap-4 ${
-              isIdentityConfirmed
+            className={`p-4 rounded-xl border transition-colors flex items-center justify-between gap-4 ${isIdentityConfirmed
                 ? 'bg-[#FFFAEB] border-[#FEDF89]'
                 : 'bg-bg-subtle border-border-default'
-            }`}
+              }`}
           >
             <div className="flex items-start gap-3">
               <button
                 type="button"
                 onClick={() => setIsIdentityConfirmed(!isIdentityConfirmed)}
-                className={`w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-bold mt-0.5 cursor-pointer shrink-0 transition-colors ${
-                  isIdentityConfirmed ? 'bg-primary' : 'border border-border-strong bg-transparent'
-                }`}
+                className={`w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-bold mt-0.5 cursor-pointer shrink-0 transition-colors ${isIdentityConfirmed ? 'bg-primary' : 'border border-border-strong bg-transparent'
+                  }`}
               >
                 {isIdentityConfirmed && '✓'}
               </button>
@@ -364,11 +362,10 @@ export default function PasswordResetDetail({
             type="button"
             disabled={!isIdentityConfirmed || isProcessing}
             onClick={handleGenerate}
-            className={`flex-1 py-2.5 px-4 rounded-xl text-label font-medium flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs ${
-              isIdentityConfirmed && !isProcessing
+            className={`flex-1 py-2.5 px-4 rounded-xl text-label font-medium flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs ${isIdentityConfirmed && !isProcessing
                 ? 'bg-brand-accent text-primary hover:opacity-90'
                 : 'bg-disabled text-white cursor-not-allowed opacity-60'
-            }`}
+              }`}
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />

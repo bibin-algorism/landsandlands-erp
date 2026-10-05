@@ -64,7 +64,7 @@ export default function RequestPasswordReset({
           </label>
           <div className="flex items-center border border-border-default rounded-lg overflow-hidden bg-bg-default focus-within:border-border-strong transition-colors">
             <span className="m-1.5 px-3 py-2 bg-bg-canvas text-secondary text-caption font-medium select-none rounded-sm">
-              L&L_
+              LL_
             </span>
             <input
               id="resetEmpCode"
@@ -91,18 +91,16 @@ export default function RequestPasswordReset({
                 <label
                   key={option}
                   onClick={() => !isPending && setSelectedReason(option)}
-                  className={`flex items-center gap-3 p-3 rounded-lg border transition-colors cursor-pointer select-none ${
-                    isSelected
+                  className={`flex items-center gap-3 p-3 rounded-lg border transition-colors cursor-pointer select-none ${isSelected
                       ? 'bg-[#FFFAEB] border-brand-accent'
                       : 'bg-bg-default border-border-default hover:border-border-strong'
-                  } ${isPending ? 'opacity-50 pointer-events-none' : ''}`}
+                    } ${isPending ? 'opacity-50 pointer-events-none' : ''}`}
                 >
                   <div
-                    className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
-                      isSelected
+                    className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${isSelected
                         ? 'border-primary bg-primary'
                         : 'border-border-strong bg-transparent'
-                    }`}
+                      }`}
                   >
                     {isSelected && (
                       <div className="w-1.5 h-1.5 rounded-full bg-white" />

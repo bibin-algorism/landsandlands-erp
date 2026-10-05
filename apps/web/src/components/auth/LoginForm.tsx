@@ -18,7 +18,7 @@ export default function LoginForm({ onDeactivatedTest }: LoginFormProps) {
     e.preventDefault()
     if (!empCode || !password) return
 
-    const identifier = empCode.startsWith('L&L_') ? empCode : `L&L_${empCode}`
+    const identifier = empCode.startsWith('LL_') ? empCode : `LL_${empCode}`
     login({ identifier, password })
   }
 
@@ -64,7 +64,7 @@ export default function LoginForm({ onDeactivatedTest }: LoginFormProps) {
           </label>
           <div className="flex items-center border border-border-default rounded-lg overflow-hidden bg-bg-default focus-within:border-border-strong transition-colors">
             <span className="m-1.5 px-3 py-2 bg-bg-canvas text-secondary text-caption font-medium select-none rounded-sm">
-              L&L_
+              LL_
             </span>
             <input
               id="empCode"
@@ -92,11 +92,10 @@ export default function LoginForm({ onDeactivatedTest }: LoginFormProps) {
               onChange={(e) => setPassword(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Enter password"
-              className={`w-full px-3 py-2 pr-16 border rounded-lg bg-bg-default text-primary text-body-small placeholder:text-disabled outline-none transition-colors ${
-                error
+              className={`w-full px-3 py-2 pr-16 border rounded-lg bg-bg-default text-primary text-body-small placeholder:text-disabled outline-none transition-colors ${error
                   ? 'border-brand-accent focus:border-brand-accent'
                   : 'border-border-default focus:border-border-strong'
-              }`}
+                }`}
             />
             <button
               type="button"

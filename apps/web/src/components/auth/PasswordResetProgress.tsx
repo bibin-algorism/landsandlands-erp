@@ -10,7 +10,7 @@ export interface PasswordResetProgressProps {
 }
 
 export default function PasswordResetProgress({
-  empCode = 'L&L_48213',
+  empCode = 'LL_48213',
   initials = 'PR',
   requestDate = '23 Sep 2026, 10:42 am · Forgot password',
   extPhone = '[TBC]',

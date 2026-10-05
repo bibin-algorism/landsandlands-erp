@@ -230,15 +230,10 @@ export class AuthService {
           select: {
             id: true,
             status: true,
-            profile: {
+            employee: {
               select: {
                 firstName: true,
                 lastName: true,
-                phone: true,
-              },
-            },
-            employee: {
-              select: {
                 employmentDetail: {
                   select: {
                     role: true,
@@ -357,8 +352,6 @@ export class AuthService {
     const passwordHash = await this.passwordHashService.hashPassword(initialPassword);
     const mustChangePassword = dto.mustChangePassword ?? isAutoPassword;
 
-    const hasProfileData = dto.firstName || dto.lastName || dto.email || dto.phone;
-
     const createdUser = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const user = await tx.user.create({
         data: {
@@ -366,19 +359,6 @@ export class AuthService {
           passwordHash,
           stakeholderType: dto.stakeholderType,
           mustChangePassword,
-          profile: hasProfileData
-            ? {
-                create: {
-                  firstName: dto.firstName,
-                  lastName: dto.lastName,
-                  email: dto.email,
-                  phone: dto.phone,
-                },
-              }
-            : undefined,
-        },
-        include: {
-          profile: true,
         },
       });
 
@@ -416,7 +396,6 @@ export class AuthService {
         stakeholderType: createdUser.stakeholderType,
         status: createdUser.status,
         mustChangePassword: createdUser.mustChangePassword,
-        profile: createdUser.profile,
         createdAt: createdUser.createdAt,
       },
       temporaryPassword: isAutoPassword ? initialPassword : undefined,

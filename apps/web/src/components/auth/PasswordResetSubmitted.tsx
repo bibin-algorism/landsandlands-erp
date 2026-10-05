@@ -9,7 +9,7 @@ export interface PasswordResetSubmittedProps {
 }
 
 export default function PasswordResetSubmitted({
-  empCode = 'L&L_48213',
+  empCode = 'LL_48213',
   reason = 'I forgot my password',
   requestedAt = '30 Sep 2026, 10:42 am',
   status = 'Awaiting HR',

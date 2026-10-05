@@ -72,11 +72,11 @@ describe('AuthService', () => {
     it('should throw ForbiddenException if user is ON_HOLD', async () => {
       mockPrisma.user.findUnique.mockResolvedValue({
         id: 'usr_1',
-        identifier: 'L&L_1001',
+        identifier: 'LL_1001',
         status: UserStatus.ON_HOLD,
       });
 
-      await expect(service.login({ identifier: 'L&L_1001', password: 'Password123!' })).rejects.toThrow(
+      await expect(service.login({ identifier: 'LL_1001', password: 'Password123!' })).rejects.toThrow(
         ForbiddenException,
       );
     });
@@ -84,7 +84,7 @@ describe('AuthService', () => {
     it('should throw UnauthorizedException on invalid password', async () => {
       mockPrisma.user.findUnique.mockResolvedValue({
         id: 'usr_1',
-        identifier: 'L&L_1001',
+        identifier: 'LL_1001',
         status: UserStatus.ACTIVE,
         passwordHash: '$argon2id$v=19$m=65536,t=3,p=4$dummy',
         failedLoginAttempts: 0,
@@ -93,7 +93,7 @@ describe('AuthService', () => {
 
       jest.spyOn(passwordHashService, 'verifyPassword').mockResolvedValue(false);
 
-      await expect(service.login({ identifier: 'L&L_1001', password: 'WrongPassword' })).rejects.toThrow(
+      await expect(service.login({ identifier: 'LL_1001', password: 'WrongPassword' })).rejects.toThrow(
         UnauthorizedException,
       );
     });
@@ -101,7 +101,7 @@ describe('AuthService', () => {
     it('should return tempToken if mustChangePassword is true', async () => {
       mockPrisma.user.findUnique.mockResolvedValue({
         id: 'usr_1',
-        identifier: 'L&L_1001',
+        identifier: 'LL_1001',
         status: UserStatus.ACTIVE,
         passwordHash: 'hashed_pass',
         mustChangePassword: true,
@@ -111,7 +111,7 @@ describe('AuthService', () => {
 
       jest.spyOn(passwordHashService, 'verifyPassword').mockResolvedValue(true);
 
-      const result = await service.login({ identifier: 'L&L_1001', password: 'TempPassword123!' });
+      const result = await service.login({ identifier: 'LL_1001', password: 'TempPassword123!' });
 
       expect(result.mustChangePassword).toBe(true);
       expect(result.tempToken).toBe('mock_jwt_token');
@@ -122,14 +122,14 @@ describe('AuthService', () => {
     it('should set User status to ON_HOLD and create reset request', async () => {
       mockPrisma.user.findUnique.mockResolvedValue({
         id: 'usr_1',
-        identifier: 'L&L_1001',
+        identifier: 'LL_1001',
         status: UserStatus.ACTIVE,
       });
 
       mockPrisma.passwordResetRequest.create.mockResolvedValue({ id: 'req_123' });
 
       const result = await service.requestReset({
-        identifier: 'L&L_1001',
+        identifier: 'LL_1001',
         reason: 'Forgot password after vacation',
       });
 
@@ -145,7 +145,7 @@ describe('AuthService', () => {
     it('should throw BadRequestException if new password matches password history', async () => {
       mockPrisma.user.findUnique.mockResolvedValue({
         id: 'usr_1',
-        identifier: 'L&L_1001',
+        identifier: 'LL_1001',
         passwordHash: 'current_hash',
         passwordHistories: [{ passwordHash: 'old_hash_1' }],
       });
