@@ -80,6 +80,75 @@ async function main() {
   })
   console.log(`Employee user provisioned: ${employeeUser.identifier} (${employeeUser.role})`)
 
+  // 4. Ensure super admin employee record for client originator anchoring
+  const adminEmployee = await prisma.employee.upsert({
+    where: { employeeId: 'LL-00001' },
+    update: {},
+    create: {
+      employeeId: 'LL-00001',
+      userId: adminUser.id,
+      firstName: 'System',
+      lastName: 'Admin',
+      personalDetail: {
+        create: {
+          dateOfBirth: new Date('1985-01-01'),
+          gender: 'MALE',
+          bloodGroup: 'O_POSITIVE',
+          maritalStatus: 'MARRIED',
+          fatherName: 'System Admin Sr',
+        },
+      },
+      communicationDetail: {
+        create: {
+          personalPhone: '+919900000001',
+          officialPhone: '+919900000002',
+          personalEmail: 'admin.personal@landsandlands.com',
+          officialEmail: 'admin@landsandlands.com',
+          currentAddress: 'Bangalore HQ',
+          permanentAddress: 'Bangalore HQ',
+        },
+      },
+      employmentDetail: {
+        create: {
+          vertical: 'PRIMARY',
+          role: 'MANAGING_DIRECTOR',
+          jobType: 'PERMANENT',
+          joiningDate: new Date('2020-01-01'),
+        },
+      },
+    },
+  })
+
+  // 5. Initial Sample Client
+  const sampleClient = await prisma.client.upsert({
+    where: { clientCode: 'CL-10001' },
+    update: {},
+    create: {
+      clientCode: 'CL-10001',
+      clientType: 'INDIVIDUAL',
+      status: 'ACTIVE',
+      acquiredById: adminEmployee.id,
+      primaryRMId: adminEmployee.id,
+      profile: {
+        create: {
+          firstName: 'Rajesh',
+          lastName: 'Kumar',
+          panNumber: 'ABCDE1234F',
+          aadhaarNumber: '123456789012',
+        },
+      },
+      contact: {
+        create: {
+          primaryPhone: '+919876543210',
+          email: 'rajesh.kumar@example.com',
+          currentAddress: 'Indiranagar, Bangalore, Karnataka - 560038',
+          permanentAddress: 'Indiranagar, Bangalore, Karnataka - 560038',
+        },
+      },
+    },
+  })
+  console.log(`Sample client provisioned: ${sampleClient.clientCode} (${sampleClient.clientType})`)
+
   console.log('Seeding completed successfully!')
 }
 

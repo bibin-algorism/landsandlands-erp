@@ -1,0 +1,25 @@
+meta {
+  name: Reassign Primary RM
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/clients/{{clientId}}/assign
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "primaryRMId": "{{employeeId}}"
+  }
+}

@@ -1,0 +1,40 @@
+meta {
+  name: Create Client
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/clients
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "clientType": "INDIVIDUAL",
+    "firstName": "Suresh",
+    "lastName": "Rao",
+    "panNumber": "ABCDE5678G",
+    "aadhaarNumber": "987654321098",
+    "primaryPhone": "+919845012345",
+    "secondaryPhone": "+919845012346",
+    "email": "suresh.rao@example.com",
+    "currentAddress": "Flat 302, Palm Heights, Jayanagar, Bangalore - 560041",
+    "permanentAddress": "Flat 302, Palm Heights, Jayanagar, Bangalore - 560041"
+  }
+}
+
+script:post-response {
+  if (res.body.id) {
+    bru.setEnvVar("clientId", res.body.id);
+  }
+}

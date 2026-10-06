@@ -117,6 +117,18 @@ enum AuditActionType {
   REACTIVATION
 }
 
+enum ClientType {
+  INDIVIDUAL
+  CORPORATE
+}
+
+enum ClientStatus {
+  PROSPECT
+  ACTIVE
+  INACTIVE
+  BLACKLISTED
+}
+
 // ==========================================
 // 1. AUTHENTICATION MODULE MODELS
 // ==========================================
@@ -251,6 +263,10 @@ model Employee {
   
   // Reporting Line Relations
   subordinates         EmployeeEmploymentDetail[]    @relation("ReportingLine")
+
+  // Client Relations
+  acquiredClients      Client[]                      @relation("ClientAcquiredBy")
+  managedClients       Client[]                      @relation("ClientPrimaryRM")
 
   createdAt            DateTime                      @default(now())
   updatedAt            DateTime                      @updatedAt
@@ -528,4 +544,70 @@ model EmployeeAuditLog {
   @@index([employeeId])
   @@index([performedAt])
   @@map("employee_audit_logs")
+}
+
+// ==========================================
+// 3. CLIENT MODULE MODELS
+// ==========================================
+
+model Client {
+  id           String       @id @default(uuid())
+  clientCode   String       @unique // CL-XXXXX
+  clientType   ClientType   @default(INDIVIDUAL)
+  status       ClientStatus @default(ACTIVE)
+
+  acquiredById String
+  primaryRMId  String?
+
+  acquiredBy   Employee     @relation("ClientAcquiredBy", fields: [acquiredById], references: [id])
+  primaryRM    Employee?    @relation("ClientPrimaryRM", fields: [primaryRMId], references: [id])
+
+  profile      ClientProfile?
+  contact      ClientContact?
+
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([clientCode])
+  @@index([acquiredById])
+  @@index([primaryRMId])
+  @@index([status])
+  @@map("clients")
+}
+
+model ClientProfile {
+  id            String   @id @default(uuid())
+  clientId      String   @unique
+
+  firstName     String?
+  lastName      String?
+  companyName   String?
+  panNumber     String?
+  aadhaarNumber String?
+  gstNumber     String?
+
+  client        Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("client_profiles")
+}
+
+model ClientContact {
+  id               String   @id @default(uuid())
+  clientId         String   @unique
+
+  primaryPhone     String
+  secondaryPhone   String?
+  email            String?
+  currentAddress   String?
+  permanentAddress String?
+
+  client           Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("client_contacts")
 }

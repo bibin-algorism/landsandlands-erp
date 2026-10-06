@@ -13,4 +13,6 @@ export {
   ChangeRequestStatus,
   ChangeSource,
   AuditActionType,
+  ClientType,
+  ClientStatus,
 } from '@prisma/client';

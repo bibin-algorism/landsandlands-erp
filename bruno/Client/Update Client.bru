@@ -1,0 +1,26 @@
+meta {
+  name: Update Client
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/v1/clients/{{clientId}}
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "primaryPhone": "+919845099999",
+    "currentAddress": "Plot 15, Koramangala 4th Block, Bangalore - 560034"
+  }
+}
