@@ -8,7 +8,12 @@ export interface AppLayoutProps {
 
 export default function AppLayout({ children }: AppLayoutProps) {
   return (
-    <div className="min-h-screen bg-bg-canvas flex">
+    <div
+      className="min-h-screen flex"
+      style={{
+        background: 'linear-gradient(126.87deg, #F3F1ED 7.14%, #F3F1ED 46.43%, #FFF2D1 78.57%)',
+      }}
+    >
       {/* Sidebar navigation */}
       <Sidebar />
 

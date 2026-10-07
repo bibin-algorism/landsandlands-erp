@@ -1,13 +1,24 @@
 import AppLayout from '../components/layout/AppLayout'
 
 export default function Dashboard() {
+  const userInfoStr = localStorage.getItem('user_info')
+  let userName = 'User'
+  if (userInfoStr) {
+    try {
+      const userInfo = JSON.parse(userInfoStr)
+      userName = userInfo.firstname || userInfo.identifier || userInfo.firstName || 'User'
+    } catch {
+      // Fallback
+    }
+  }
+
   return (
     <AppLayout>
       <div className="space-y-6">
         {/* Welcome Banner */}
         <div className="bg-surface-card border border-border-default rounded-2xl p-6 shadow-xs flex items-center justify-between">
           <div className="space-y-1">
-            <h1 className="text-h2 text-primary font-bold">Welcome back, Deepa 👋</h1>
+            <h1 className="text-h2 text-primary font-bold">Welcome back, {userName} 👋</h1>
             <p className="text-body-small text-secondary">
               Here is what is happening across Lands and Lands ERP today.
             </p>

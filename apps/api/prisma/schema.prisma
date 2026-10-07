@@ -85,6 +85,7 @@ enum PreviousOrgDocStatus {
 }
 
 enum EmployeeBackground {
+  EXPERIENCED
   FRESHER
   FREELANCER
   ENTREPRENEUR
@@ -333,14 +334,18 @@ model EmployeeDocument {
   aadhaarNumber          String                // Sensitivity: Restricted
   aadhaarFrontUrl        String?               // Sensitivity: Restricted
   aadhaarBackUrl         String?               // Sensitivity: Restricted
+  panNumber              String?               // Sensitivity: Restricted
+  panFrontUrl            String?               // Sensitivity: Restricted
   drivingLicenceNumber   String                // Sensitivity: Restricted
   drivingLicenceFrontUrl String?               // Sensitivity: Restricted
   drivingLicenceBackUrl  String?               // Sensitivity: Restricted
   highestQualification   QualificationLevel    // Sensitivity: Confidential
   previousOrgDocStatus   PreviousOrgDocStatus? // Sensitivity: Confidential
+  relievingExperienceUrl String?               // Sensitivity: Confidential
+  salarySlipUrl          String?               // Sensitivity: Confidential
   secondDocDueDate       DateTime?             // 2 weeks to 1 month due date (BR-05)
   isIncompleteFlag       Boolean               @default(false)
-  employeeBackground     EmployeeBackground?   // FRESHER | FREELANCER | ENTREPRENEUR
+  employeeBackground     EmployeeBackground?   // EXPERIENCED | FRESHER | FREELANCER | ENTREPRENEUR
   recordOfIncomeUrl      String?               // Sensitivity: Confidential
 
   employee               Employee              @relation(fields: [employeeId], references: [id], onDelete: Cascade)

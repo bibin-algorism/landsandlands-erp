@@ -247,8 +247,13 @@ export class ClientService {
    * 3. Get Client By ID
    */
   async getClientById(id: string, user: { userId: string; role: string }) {
-    const client = await this.prisma.client.findUnique({
-      where: { id },
+    const client = await this.prisma.client.findFirst({
+      where: {
+        OR: [
+          { id },
+          { clientCode: id },
+        ],
+      },
       include: {
         profile: true,
         contact: true,

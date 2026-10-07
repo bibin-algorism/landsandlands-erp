@@ -115,6 +115,14 @@ export class CreateEmployeeDto {
   @IsString()
   aadhaarBackUrl?: string;
 
+  @IsOptional()
+  @IsString()
+  panNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  panFrontUrl?: string;
+
   @IsString()
   @IsNotEmpty()
   drivingLicenceNumber: string;
@@ -134,6 +142,18 @@ export class CreateEmployeeDto {
   @IsOptional()
   @IsEnum(PreviousOrgDocStatus)
   previousOrgDocStatus?: PreviousOrgDocStatus;
+
+  @IsOptional()
+  @IsString()
+  relievingExperienceUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  salarySlipUrl?: string;
+
+  @IsOptional()
+  @IsDateString()
+  secondDocDueDate?: string;
 
   @IsOptional()
   @IsEnum(EmployeeBackground)

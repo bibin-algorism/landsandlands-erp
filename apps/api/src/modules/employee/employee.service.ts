@@ -182,7 +182,9 @@ export class EmployeeService {
    * Upload Educational Documents (POST /api/v1/employees/:id/documents)
    */
   async uploadEducationalDocuments(employeeId: string, dto: UploadDocumentsDto) {
-    const employee = await this.prisma.employee.findUnique({ where: { id: employeeId } });
+    const employee = await this.prisma.employee.findFirst({
+      where: { OR: [{ id: employeeId }, { employeeId }] },
+    });
     if (!employee) {
       throw new NotFoundException(`Employee with ID ${employeeId} not found`);
     }
@@ -228,8 +230,13 @@ export class EmployeeService {
    * Get Single Employee Profile with Role-Based Masking (GET /api/v1/employees/:id)
    */
   async getEmployeeById(id: string, viewerRole: UserRole) {
-    const employee = await this.prisma.employee.findUnique({
-      where: { id },
+    const employee = await this.prisma.employee.findFirst({
+      where: {
+        OR: [
+          { id },
+          { employeeId: id },
+        ],
+      },
       include: {
         personalDetail: true,
         communicationDetail: true,
@@ -404,7 +411,9 @@ export class EmployeeService {
    * HR Direct Edit (PUT /api/v1/employees/:id/direct-edit)
    */
   async directEdit(employeeId: string, dto: DirectEditDto, hrUserId: string) {
-    const employee = await this.prisma.employee.findUnique({ where: { id: employeeId } });
+    const employee = await this.prisma.employee.findFirst({
+      where: { OR: [{ id: employeeId }, { employeeId }] },
+    });
     if (!employee) {
       throw new NotFoundException(`Employee ${employeeId} not found`);
     }
@@ -489,8 +498,8 @@ export class EmployeeService {
    * Submit Missing Secondary Document (POST /api/v1/employees/:id/second-document)
    */
   async submitSecondDocument(employeeId: string, dto: any, hrUserId: string) {
-    const employee = await this.prisma.employee.findUnique({
-      where: { id: employeeId },
+    const employee = await this.prisma.employee.findFirst({
+      where: { OR: [{ id: employeeId }, { employeeId }] },
       include: { documentDetail: true },
     });
 
