@@ -149,7 +149,7 @@ export default function AddEmployeePage() {
         />
 
         {/* Dev Step Switcher Toolbar (Temporary for development) */}
-        <div className="flex items-center gap-2 p-2 bg-[#F3F4F6] border border-[#E5E7EB] rounded-xl text-caption font-semibold text-secondary overflow-x-auto">
+        {/* <div className="flex items-center gap-2 p-2 bg-[#F3F4F6] border border-[#E5E7EB] rounded-xl text-caption font-semibold text-secondary overflow-x-auto">
           <span className="text-[11px] uppercase tracking-wider text-secondary px-2 font-bold shrink-0">
             Dev Nav:
           </span>
@@ -167,7 +167,7 @@ export default function AddEmployeePage() {
               {stepNum === 7 ? 'Step 7 (Success)' : `Step ${stepNum}`}
             </button>
           ))}
-        </div>
+        </div> */}
 
         {/* Wizard Steps Bar Component */}
         <WizardStepBar

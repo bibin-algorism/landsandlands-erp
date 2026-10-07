@@ -59,7 +59,20 @@ pnpm db:push
 
 # Generate Prisma Client TypeScript types
 pnpm db:generate
+
+# Seed database with initial users (Super Admin, Mock Employee, Mock Client)
+pnpm db:seed
 ```
+
+### 🔑 Demo Login Credentials
+
+Upon running `pnpm db:seed`, the database is provisioned with default accounts:
+
+| Role | Identifier / User Code | Password | Details |
+| :--- | :--- | :--- | :--- |
+| **Super Admin** | `LL_00001` (or `LL-00001`) | `AdminPassword123!` | System Managing Director (`SUPER_ADMIN`) |
+| **Mock Employee** | `LL_48213` (or `LL-48213`) | `Password123!` | Rahul Sharma (Sales Executive) |
+| **Mock Client** | `CL_10001` (or `CL-10001`) | `ClientPassword123!` | Rajesh Kumar (Client Code: `CL-10001`) |
 
 ---
 

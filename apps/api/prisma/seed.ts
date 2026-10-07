@@ -4,23 +4,32 @@ import * as argon2 from 'argon2'
 const prisma = new PrismaClient()
 
 async function main() {
-  console.log('Seeding initial system users...')
+  const currentEnv = process.env.NODE_ENV?.toLowerCase()
+  const allowedEnvs = ['development', 'dev', 'local', 'test', undefined, '']
 
-  const defaultPasswordHash = await argon2.hash('AdminPassword123!', {
+  if (currentEnv === 'production' || currentEnv === 'staging' || !allowedEnvs.includes(currentEnv)) {
+    console.error(`❌ Seeding blocked! Seeding is prohibited in '${process.env.NODE_ENV}' environment. Allowed in local development only.`)
+    process.exit(1)
+  }
+
+  console.log('\n🌱 Seeding database with initial environment data...\n')
+
+  const adminPassword = 'AdminPassword123!'
+  const empPassword = 'Password123!'
+  const clientPassword = 'ClientPassword123!'
+
+  const argonOptions = {
     type: argon2.argon2id,
     memoryCost: 65536,
     timeCost: 3,
     parallelism: 4,
-  })
+  } as const
 
-  const empPasswordHash = await argon2.hash('Password123!', {
-    type: argon2.argon2id,
-    memoryCost: 65536,
-    timeCost: 3,
-    parallelism: 4,
-  })
+  const defaultPasswordHash = await argon2.hash(adminPassword, argonOptions)
+  const empPasswordHash = await argon2.hash(empPassword, argonOptions)
+  const clientPasswordHash = await argon2.hash(clientPassword, argonOptions)
 
-  // 1. Super Admin User
+  // 1. Super Admin User & Employee Profile
   const adminUser = await prisma.user.upsert({
     where: { identifier: 'LL_00001' },
     update: {
@@ -38,49 +47,7 @@ async function main() {
       mustChangePassword: false,
     },
   })
-  console.log(`Super Admin provisioned: ${adminUser.identifier} (${adminUser.role})`)
 
-  // 2. HR Admin User
-  const hrAdminUser = await prisma.user.upsert({
-    where: { identifier: 'LL_00002' },
-    update: {
-      role: UserRole.HR_ADMIN,
-      permissions: ['password_resets:read', 'password_resets:write', 'users:read', 'users:write'],
-      status: UserStatus.ACTIVE,
-    },
-    create: {
-      identifier: 'LL_00002',
-      passwordHash: defaultPasswordHash,
-      role: UserRole.HR_ADMIN,
-      permissions: ['password_resets:read', 'password_resets:write', 'users:read', 'users:write'],
-      status: UserStatus.ACTIVE,
-      stakeholderType: StakeholderType.EMPLOYEE,
-      mustChangePassword: false,
-    },
-  })
-  console.log(`HR Admin provisioned: ${hrAdminUser.identifier} (${hrAdminUser.role})`)
-
-  // 3. Regular Employee User
-  const employeeUser = await prisma.user.upsert({
-    where: { identifier: 'LL_48213' },
-    update: {
-      role: UserRole.EMPLOYEE,
-      permissions: [],
-      status: UserStatus.ACTIVE,
-    },
-    create: {
-      identifier: 'LL_48213',
-      passwordHash: empPasswordHash,
-      role: UserRole.EMPLOYEE,
-      permissions: [],
-      status: UserStatus.ACTIVE,
-      stakeholderType: StakeholderType.EMPLOYEE,
-      mustChangePassword: false,
-    },
-  })
-  console.log(`Employee user provisioned: ${employeeUser.identifier} (${employeeUser.role})`)
-
-  // 4. Ensure super admin employee record for client originator anchoring
   const adminEmployee = await prisma.employee.upsert({
     where: { employeeId: 'LL-00001' },
     update: {},
@@ -119,7 +86,101 @@ async function main() {
     },
   })
 
-  // 5. Initial Sample Client
+  // 2. HR Admin User
+  await prisma.user.upsert({
+    where: { identifier: 'LL_00002' },
+    update: {
+      role: UserRole.HR_ADMIN,
+      permissions: ['password_resets:read', 'password_resets:write', 'users:read', 'users:write'],
+      status: UserStatus.ACTIVE,
+    },
+    create: {
+      identifier: 'LL_00002',
+      passwordHash: defaultPasswordHash,
+      role: UserRole.HR_ADMIN,
+      permissions: ['password_resets:read', 'password_resets:write', 'users:read', 'users:write'],
+      status: UserStatus.ACTIVE,
+      stakeholderType: StakeholderType.EMPLOYEE,
+      mustChangePassword: false,
+    },
+  })
+
+  // 3. Regular Mock Employee User & Profile
+  const mockEmpUser = await prisma.user.upsert({
+    where: { identifier: 'LL_48213' },
+    update: {
+      role: UserRole.EMPLOYEE,
+      permissions: [],
+      status: UserStatus.ACTIVE,
+    },
+    create: {
+      identifier: 'LL_48213',
+      passwordHash: empPasswordHash,
+      role: UserRole.EMPLOYEE,
+      permissions: [],
+      status: UserStatus.ACTIVE,
+      stakeholderType: StakeholderType.EMPLOYEE,
+      mustChangePassword: false,
+    },
+  })
+
+  const mockEmployee = await prisma.employee.upsert({
+    where: { employeeId: 'LL-48213' },
+    update: {},
+    create: {
+      employeeId: 'LL-48213',
+      userId: mockEmpUser.id,
+      firstName: 'Rahul',
+      lastName: 'Sharma',
+      personalDetail: {
+        create: {
+          dateOfBirth: new Date('1994-06-15'),
+          gender: 'MALE',
+          bloodGroup: 'B_POSITIVE',
+          maritalStatus: 'SINGLE',
+          fatherName: 'Ramesh Sharma',
+        },
+      },
+      communicationDetail: {
+        create: {
+          personalPhone: '+919888877771',
+          officialPhone: '+919888877772',
+          personalEmail: 'rahul.sharma@example.com',
+          officialEmail: 'rahul.sharma@landsandlands.com',
+          currentAddress: 'Koramangala, Bangalore, Karnataka - 560034',
+          permanentAddress: 'Koramangala, Bangalore, Karnataka - 560034',
+        },
+      },
+      employmentDetail: {
+        create: {
+          vertical: 'SALES',
+          role: 'EXECUTIVE',
+          jobType: 'PERMANENT',
+          joiningDate: new Date('2022-03-10'),
+          reportingAuthorityId: adminEmployee.id,
+        },
+      },
+    },
+  })
+
+  // 4. Mock Client User & Client Profile
+  await prisma.user.upsert({
+    where: { identifier: 'CL_10001' },
+    update: {
+      role: UserRole.EMPLOYEE,
+      status: UserStatus.ACTIVE,
+      stakeholderType: StakeholderType.CLIENT,
+    },
+    create: {
+      identifier: 'CL_10001',
+      passwordHash: clientPasswordHash,
+      role: UserRole.EMPLOYEE,
+      status: UserStatus.ACTIVE,
+      stakeholderType: StakeholderType.CLIENT,
+      mustChangePassword: false,
+    },
+  })
+
   const sampleClient = await prisma.client.upsert({
     where: { clientCode: 'CL-10001' },
     update: {},
@@ -127,8 +188,8 @@ async function main() {
       clientCode: 'CL-10001',
       clientType: 'INDIVIDUAL',
       status: 'ACTIVE',
-      acquiredById: adminEmployee.id,
-      primaryRMId: adminEmployee.id,
+      acquiredById: mockEmployee.id,
+      primaryRMId: mockEmployee.id,
       profile: {
         create: {
           firstName: 'Rajesh',
@@ -147,14 +208,31 @@ async function main() {
       },
     },
   })
-  console.log(`Sample client provisioned: ${sampleClient.clientCode} (${sampleClient.clientType})`)
 
-  console.log('Seeding completed successfully!')
+  console.log('✅ Seeding completed successfully!\n')
+  console.log('====================================================================')
+  console.log('🔑 SEEDED DEMO LOGIN CREDENTIALS')
+  console.log('====================================================================')
+  console.log(' 1️⃣  SUPER ADMIN:')
+  console.log('    • Identifier : LL_00001 (or LL-00001)')
+  console.log(`    • Password   : ${adminPassword}`)
+  console.log('    • Role       : SUPER_ADMIN')
+  console.log('--------------------------------------------------------------------')
+  console.log(' 2️⃣  MOCK EMPLOYEE:')
+  console.log('    • Identifier : LL_48213 (or LL-48213)')
+  console.log(`    • Password   : ${empPassword}`)
+  console.log('    • Name       : Rahul Sharma (Sales Executive)')
+  console.log('--------------------------------------------------------------------')
+  console.log(' 3️⃣  MOCK CLIENT:')
+  console.log('    • Identifier : CL_10001 (or CL-10001)')
+  console.log(`    • Password   : ${clientPassword}`)
+  console.log(`    • Name       : Rajesh Kumar (Code: ${sampleClient.clientCode})`)
+  console.log('====================================================================\n')
 }
 
 main()
   .catch((e) => {
-    console.error('Seeding failed:', e)
+    console.error('❌ Seeding failed:', e)
     process.exit(1)
   })
   .finally(async () => {

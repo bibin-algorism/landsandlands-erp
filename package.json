@@ -13,7 +13,8 @@
     "db:migrate": "dotenv -e apps/api/.env -- prisma migrate dev --schema=apps/api/prisma/schema.prisma",
     "db:deploy": "dotenv -e apps/api/.env -- prisma migrate deploy --schema=apps/api/prisma/schema.prisma",
     "db:push": "dotenv -e apps/api/.env -- prisma db push --schema=apps/api/prisma/schema.prisma",
-    "db:generate": "prisma generate --schema=apps/api/prisma/schema.prisma"
+    "db:generate": "prisma generate --schema=apps/api/prisma/schema.prisma",
+    "db:seed": "dotenv -e apps/api/.env -- prisma db seed --schema=apps/api/prisma/schema.prisma"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
@@ -38,5 +39,8 @@
   },
   "dependencies": {
     "@prisma/client": "5.22.0"
+  },
+  "prisma": {
+    "seed": "pnpm --filter api exec ts-node prisma/seed.ts"
   }
 }
