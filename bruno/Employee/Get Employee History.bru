@@ -1,0 +1,15 @@
+meta {
+  name: Get Employee History
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{baseUrl}}/api/v1/employees/{{employeeId}}/history?field=financial.takeHomePay
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

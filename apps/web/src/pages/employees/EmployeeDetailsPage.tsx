@@ -1,381 +1,356 @@
-import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useState, type ReactNode } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import AppLayout from '../../components/layout/AppLayout'
 import PageHeader from '../../components/common/PageHeader'
 import Button from '../../components/common/Button'
-import { useEmployees, useEmployeeDetails } from '../../hooks/useEmployees'
 import Avatar from '../../components/common/Avatar'
+import StatusBadge from '../../components/common/StatusBadge'
+import HistoryDrawer from '../../components/employees/HistoryDrawer'
+import { formatDate, formatRupees } from '../../components/employees/employeeForm'
+import { useEmployeeDetails } from '../../hooks/useEmployees'
+import { employeeService } from '../../services/employee.service'
+import {
+  BACKGROUND_LABELS,
+  JOB_TYPE_LABELS,
+  QUALIFICATION_LABELS,
+  ROLE_LABELS,
+} from '../../constants/employee'
+import type { EmployeeView } from '../../api/types'
 
-type TabType = 'Personal' | 'Communication' | 'Documents' | 'Employment' | 'Financial' | 'System data'
+type TabType = 'Personal' | 'Communication' | 'Documentation' | 'Employment' | 'Financial' | 'System data'
 
-export default function EmployeeDetailsPage() {
-  const { employeeId } = useParams<{ employeeId: string }>()
+function Detail({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="space-y-1">
+      <div className="text-caption font-medium text-secondary">{label}</div>
+      <div className="text-body-small font-semibold text-primary break-words">{value || '—'}</div>
+    </div>
+  )
+}
+
+const Grid = ({ children }: { children: ReactNode }) => (
+  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">{children}</div>
+)
+
+const person = (p: { firstName: string; lastName: string; employeeId: string } | null) =>
+  p ? `${p.firstName} ${p.lastName} · ${p.employeeId}` : '—'
+
+const dateTime = (value: string | null) =>
+  value ? new Date(value).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '—'
+
+const money = (value: number | null | undefined) => (value === null || value === undefined ? '—' : formatRupees(value))
+
+function TabContent({ tab, employee }: { tab: TabType; employee: EmployeeView }) {
+  const { personal, communication, documentation, employment, financial, system } = employee
+  switch (tab) {
+    case 'Personal':
+      return (
+        <Grid>
+          <Detail label="First name" value={employee.firstName} />
+          <Detail label="Last name" value={employee.lastName} />
+          <Detail label="Date of birth" value={formatDate(personal?.dateOfBirth)} />
+          <Detail label="Gender" value={personal?.gender} />
+          <Detail label="Blood group" value={personal?.bloodGroup} />
+          <Detail label="Marital status" value={personal?.maritalStatus} />
+          <Detail label="Father's name" value={personal?.fatherName} />
+        </Grid>
+      )
+    case 'Communication':
+      return (
+        <div className="space-y-6">
+          <Grid>
+            <Detail label="Personal phone" value={communication?.personalPhone} />
+            <Detail label="Secondary phone" value={communication?.secondaryPhone} />
+            <Detail label="Official phone" value={communication?.officialPhone} />
+            <Detail label="Personal email" value={communication?.personalEmail} />
+            <Detail label="Official email" value={communication?.officialEmail} />
+            <Detail label="Current address" value={communication?.currentAddress} />
+            <Detail label="Permanent address" value={communication?.permanentAddress} />
+          </Grid>
+          <Detail
+            label="Emergency contacts"
+            value={communication?.emergencyContacts.map((c, i) => (
+              <div key={i}>
+                {c.name} ({c.relationship}) · {c.phone}
+              </div>
+            ))}
+          />
+        </div>
+      )
+    case 'Documentation':
+      return (
+        <Grid>
+          {employee.access.restrictedVisible && (
+            <>
+              <Detail label="Aadhaar number" value={documentation?.aadhaarNumber} />
+              <Detail label="Driving licence number" value={documentation?.drivingLicenceNumber} />
+            </>
+          )}
+          <Detail
+            label="Highest qualification"
+            value={documentation ? QUALIFICATION_LABELS[documentation.highestQualification] : null}
+          />
+          <Detail
+            label="Work background"
+            value={documentation?.employeeBackground ? BACKGROUND_LABELS[documentation.employeeBackground] : null}
+          />
+          {documentation?.isIncomplete && (
+            <Detail label="Previous-organisation document due" value={formatDate(documentation.secondDocDueDate)} />
+          )}
+        </Grid>
+      )
+    case 'Employment':
+      return (
+        <div className="space-y-6">
+          <Grid>
+            <Detail label="Vertical" value={employment?.vertical} />
+            <Detail label="Role" value={employment ? ROLE_LABELS[employment.role] : null} />
+            <Detail label="Job type" value={employment ? JOB_TYPE_LABELS[employment.jobType] : null} />
+            <Detail label="Joining date" value={formatDate(employment?.joiningDate)} />
+            <Detail label="Reporting authority" value={person(employment?.reportingAuthority ?? null)} />
+            <Detail
+              label="Probation"
+              value={
+                employment?.probation
+                  ? `${employment.probation.probationPeriod} · ${employment.probation.financialAgreement}`
+                  : 'Not on probation'
+              }
+            />
+            {employment?.exitDate && <Detail label="Exit date" value={formatDate(employment.exitDate)} />}
+            {employment?.exitReason && <Detail label="Exit reason" value={employment.exitReason} />}
+          </Grid>
+          <Detail
+            label="Transfer history"
+            value={
+              employment?.transferHistory.length
+                ? employment.transferHistory.map((t, i) => (
+                    <div key={i}>
+                      {t.fromVertical} → {t.toVertical} · {formatDate(t.transferredAt)}
+                    </div>
+                  ))
+                : 'None'
+            }
+          />
+          <Detail
+            label="Promotion history"
+            value={
+              employment?.promotionHistory.length
+                ? employment.promotionHistory.map((p, i) => (
+                    <div key={i}>
+                      {ROLE_LABELS[p.fromRole]} → {ROLE_LABELS[p.toRole]} · {formatDate(p.promotedAt)}
+                    </div>
+                  ))
+                : 'None'
+            }
+          />
+        </div>
+      )
+    case 'Financial':
+      return financial ? (
+        <div className="space-y-6">
+          <Grid>
+            <Detail label="Take-home pay" value={`${money(financial.takeHomePayTotal)} / month`} />
+            <Detail label="Bank / cash" value={`${money(financial.bankComponent)} / ${money(financial.cashComponent)}`} />
+            <Detail label="Account holder" value={financial.accountHolderName} />
+            <Detail label="Account number" value={financial.accountNumber} />
+            <Detail label="IFSC" value={financial.ifscCode} />
+            <Detail label="Branch" value={financial.branchName} />
+            <Detail label="Next appraisal window" value={formatDate(financial.nextAppraisalWindow)} />
+          </Grid>
+          <Detail
+            label="Pay revisions"
+            value={
+              financial.payRevisions.length
+                ? financial.payRevisions.map((p, i) => (
+                    <div key={i}>
+                      {money(p.previousPay)} → {money(p.newPay)} · effective {formatDate(p.effectiveDate)}
+                    </div>
+                  ))
+                : 'None'
+            }
+          />
+          <Detail
+            label="Appraisals"
+            value={
+              financial.appraisals.length
+                ? financial.appraisals.map((a, i) => (
+                    <div key={i}>
+                      {a.appraisalWindow}: {a.outcome}
+                    </div>
+                  ))
+                : 'None'
+            }
+          />
+        </div>
+      ) : (
+        <p className="text-caption text-secondary">Financial details are restricted.</p>
+      )
+    case 'System data':
+      return (
+        <Grid>
+          <Detail label="Employee ID" value={employee.employeeId} />
+          <Detail label="Status" value={employee.employmentStatus === 'ACTIVE' ? 'Active' : 'Terminated'} />
+          <Detail label="Created on" value={dateTime(system.createdAt)} />
+          <Detail label="Created by" value={person(system.createdBy)} />
+          <Detail label="Onboarding completed on" value={dateTime(system.onboardingCompletedAt)} />
+          <Detail label="Last updated on" value={dateTime(system.updatedAt)} />
+          <Detail label="Last updated by" value={person(system.lastUpdatedBy)} />
+        </Grid>
+      )
+  }
+}
+
+/** Employee record (FR-11 to FR-14). Also serves /my-profile for the signed-in employee. */
+export default function EmployeeDetailsPage({ self = false }: { self?: boolean }) {
+  const params = useParams<{ employeeId: string }>()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<TabType>('Personal')
-  const [showAadhaar, setShowAadhaar] = useState(false)
-  const [showPan, setShowPan] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [docError, setDocError] = useState<string | null>(null)
+  const { data: employee, isLoading, error } = useEmployeeDetails(self ? 'me' : params.employeeId)
 
-  const { data: detailData } = useEmployeeDetails(employeeId)
-  const { data: apiEmployees } = useEmployees()
-
-  // Fetch employee from individual details endpoint first, or fallback to list lookup
-  const foundEmployee =
-    detailData ||
-    apiEmployees?.find((e) => e.employeeId === employeeId || e.id === employeeId)
-
-  const employee: any = foundEmployee || {}
-
-  const fullName =
-    employee.fullName ||
-    [employee.firstName, employee.lastName].filter(Boolean).join(' ') ||
-    employeeId ||
-    'Employee Details'
-
-  const TabDetailRenderer = ({ label, value }: { label: string, value: string }) => {
+  if (isLoading || error || !employee) {
     return (
-      <div className="bg-white border border-border-default/50 rounded-[20px] p-4">
-        <div className="text-caption text-secondary">{label}</div>
-        <div className="text-primary text-label mt-1">{value}</div>
-      </div>
+      <AppLayout>
+        <div className="p-6 text-caption text-secondary">
+          {isLoading ? 'Loading…' : (error?.message ?? 'Employee not found')}
+        </div>
+      </AppLayout>
     )
   }
 
-  const defaultDocs = [
-    { name: 'Aadhaar - Front', status: 'Unverified', verified: false },
-    { name: 'Aadhaar - Back', status: 'Unverified', verified: false },
-    { name: 'PAN - Front', status: 'Unverified', verified: false },
-    { name: 'Degree certificate', status: 'Unverified', verified: false },
+  const fullName = `${employee.firstName} ${employee.lastName}`
+  // BRQ-06: groups the viewer may open; Financial only when restricted data is visible
+  const tabs: TabType[] = [
+    'Personal',
+    'Communication',
+    'Documentation',
+    'Employment',
+    ...(employee.access.restrictedVisible ? (['Financial'] as TabType[]) : []),
+    'System data',
   ]
+  const documents = employee.documentation?.documents ?? []
 
-  const docsList = (employee?.documents && employee.documents.length > 0) ? employee.documents : defaultDocs
-  const verifiedCount = docsList.filter((d: any) => d.verified || d.status === 'Checked against original').length
-  const totalCount = docsList.length
+  const openDocument = async (document: string) => {
+    setDocError(null)
+    try {
+      await employeeService.openDocument(employee.id, document)
+    } catch (err) {
+      setDocError(err instanceof Error ? err.message : 'Could not open the document')
+    }
+  }
 
   return (
     <AppLayout>
       <div className="space-y-6 text-left w-full pb-16">
-        {/* Top Breadcrumb & Actions Row */}
         <PageHeader
-          breadcrumbItems={[
-            { label: 'People', path: '/employees' },
-            { label: 'Employees', path: '/employees' },
-            { label: employee.employeeId },
-          ]}
+          breadcrumbItems={
+            self
+              ? [{ label: 'My profile' }]
+              : [
+                  { label: 'People', path: '/employees' },
+                  { label: 'Employees', path: '/employees' },
+                  { label: employee.employeeId },
+                ]
+          }
           title={fullName}
           actions={
             <>
-              <Button
-                variant="secondary"
-                size="medium"
-                icon={
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                }
-              >
+              <Button variant="secondary" size="medium" onClick={() => setHistoryOpen(true)}>
                 View history
               </Button>
-
-              <Button
-                variant="primary"
-                size="medium"
-                onClick={() => navigate(`/employees/${employee.employeeId}/edit`)}
-              >
-                Edit details
-              </Button>
+              {employee.access.canRequestChange && (
+                <>
+                  <Button variant="secondary" size="medium" onClick={() => navigate('/my-profile/change-requests')}>
+                    My requests
+                  </Button>
+                  <Button variant="primary" size="medium" onClick={() => navigate('/my-profile/change-requests/new')}>
+                    Request a change
+                  </Button>
+                </>
+              )}
+              {employee.access.canEdit && (
+                <Button variant="primary" size="medium" onClick={() => navigate(`/employees/${employee.employeeId}/edit`)}>
+                  Edit details
+                </Button>
+              )}
             </>
           }
         />
 
-        {/* Floating Header Card */}
-        <div className="bg-surface-card border border-border-default/85 rounded-3xl p-6 shadow-xs flex flex-col lg:flex-row lg:items-center justify-start gap-8 lg:gap-28">
-          {/* Avatar + Main Identity */}
-          <div className="flex items-center gap-4 shrink-0">
-            <Avatar name={fullName} size={56} />
-            <div className="space-y-1">
-              <div className="flex items-center gap-3 flex-wrap">
-                <span className="font-semibold text-primary text-label">
-                  {fullName || '-'}
-                </span>
-                <span className="px-3 py-0.5 rounded-full text-caption font-semibold bg-[#DCFCE7] text-[#15803D]">
-                  {employee.onboardingStatus || employee.employmentStatus || 'Active'}
-                </span>
-              </div>
-              <div className="text-body-small text-secondary">
-                {(employee?.communicationDetail?.officialEmail || employee?.communicationDetail?.personalEmail || employee?.email) || '-'} · {(employee?.communicationDetail?.officialPhone || employee?.communicationDetail?.personalPhone || employee?.phone) || '-'}
-              </div>
+        <div className="bg-[#ffffffc7] backdrop-blur-xs border border-border-default/80 rounded-3xl p-6 shadow-xs flex flex-wrap items-center gap-4">
+          <Avatar name={fullName} size={56} />
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="text-h4 font-serif font-bold text-primary">{fullName}</span>
+              <StatusBadge
+                value={employee.employmentStatus === 'TERMINATED' ? 'Terminated' : employee.isIncomplete ? 'Incomplete' : 'Active'}
+                color={
+                  employee.employmentStatus === 'TERMINATED'
+                    ? 'bg-[#FEE2E2] text-[#B91C1C]'
+                    : employee.isIncomplete
+                      ? 'bg-[#FEF3C7] text-[#B45309]'
+                      : 'bg-[#DCFCE7] text-[#15803D]'
+                }
+              />
             </div>
-          </div>
-
-          {/* Quick Info Attributes */}
-          <div className="flex flex-wrap items-center gap-8 lg:gap-28 pt-4 lg:pt-0 border-t lg:border-t-0 border-border-default/60">
-            <div>
-              <div className="text-caption text-secondary font-medium capitalize tracking-wider">Employee ID</div>
-              <div className="text-label text-primary mt-0.5">{employee.employeeId || employeeId || '-'}</div>
-            </div>
-            <div>
-              <div className="text-caption text-secondary font-medium capitalize tracking-wider">Joined</div>
-              <div className="text-label text-primary mt-0.5">{employee.joinedDate || employee.createdAt || '-'}</div>
-            </div>
-            <div>
-              <div className="text-caption text-secondary font-medium capitalize tracking-wider">Reports to</div>
-              <div className="text-label text-primary mt-0.5">{employee.reportsTo || '-'}</div>
-            </div>
-            <div>
-              <div className="text-caption text-secondary font-medium capitalize tracking-wider">Job type</div>
-              <div className="text-label text-primary mt-0.5">{employee.jobType || '-'}</div>
+            <div className="text-caption text-secondary">
+              {employee.employeeId} · {employee.employment?.vertical ?? '—'} ·{' '}
+              {employee.employment ? ROLE_LABELS[employee.employment.role] : '—'} ·{' '}
+              {employee.communication?.officialEmail ?? '—'}
             </div>
           </div>
         </div>
 
-        {/* Sub-Navigation Tabs & Security Notice */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
-            <span className="text-label text-secondary font-semibold mr-1">Show:</span>
-            {(['Personal', 'Communication', 'Documents', 'Employment', 'Financial', 'System data'] as TabType[]).map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setActiveTab(tab)}
-                className={`px-3.5 py-1.75 rounded-full text-label transition-all cursor-pointer shrink-0 ${activeTab === tab
+        <div className="flex flex-wrap items-center gap-2">
+          {tabs.map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 py-2 rounded-full text-caption font-semibold transition-all cursor-pointer ${
+                activeTab === tab
                   ? 'bg-primary text-white'
-                  : 'bg-white text-secondary border border-border-default hover:text-primary hover:bg-bg-subtle'
-                  }`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex items-center gap-1.5 text-caption text-secondary shrink-0">
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-            <span>Restricted details stay hidden until you choose Show</span>
-          </div>
+                  : 'bg-white text-secondary border border-border-default hover:text-primary'
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+          {!employee.access.restrictedVisible && (
+            <span className="text-caption text-secondary ml-2">Restricted details are hidden.</span>
+          )}
         </div>
 
-        {/* Main 2-Column Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Left Column (Main Section Card - 7 cols) */}
-          <div className="lg:col-span-7 bg-surface-glass border border-border-default/80 rounded-3xl p-6 sm:p-8 shadow-xs space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-h4 text-primary">
-                {activeTab === 'Personal' && 'Personal identity'}
-                {activeTab === 'Communication' && 'Communication details'}
-                {activeTab === 'Documents' && 'Submitted documents'}
-                {activeTab === 'Employment' && 'Employment details'}
-                {activeTab === 'Financial' && 'Financial information'}
-                {activeTab === 'System data' && 'System metadata'}
-              </h2>
-
-              <button
-                type="button"
-                className="flex items-center gap-1.5 text-caption font-semibold text-secondary hover:text-primary transition-colors cursor-pointer"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                History
-              </button>
-            </div>
-
-            {/* Tab Details Render */}
-            {activeTab === 'Personal' && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <TabDetailRenderer label="Full name" value={fullName} />
-                  <TabDetailRenderer label="Date of birth" value={employee.personalDetail?.dateOfBirth || employee.dateOfBirth || '-'} />
-                  <TabDetailRenderer label="Gender" value={employee.personalDetail?.gender || employee.gender || '-'} />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <TabDetailRenderer label="Blood group" value={employee.personalDetail?.bloodGroup || employee.bloodGroup || '-'} />
-                  <TabDetailRenderer label="Father's name" value={employee.personalDetail?.fatherName || employee.fatherName || '-'} />
-                  <TabDetailRenderer label="Marital status" value={employee.personalDetail?.maritalStatus || employee.maritalStatus || '-'} />
-                </div>
-
-                {/* Sensitive Masked Fields */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                  <div className="bg-[#FAF9F5] border border-border-default/50 rounded-2xl p-4 flex items-center justify-between">
-                    <div>
-                      <div className="flex items-center gap-1.5 text-caption text-secondary font-medium">
-                        <span>Aadhaar number</span>
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                        </svg>
-                      </div>
-                      <div className="font-bold font-mono text-primary text-body-small mt-1">
-                        {showAadhaar ? (employee.personalDetail?.aadhaarFull || employee.aadhaarFull || '-') : (employee.personalDetail?.aadhaarMasked || employee.aadhaarMasked || 'XXXX XXXX XXXX')}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowAadhaar(!showAadhaar)}
-                      className="px-3 py-1 bg-white border border-border-default rounded-full text-caption font-semibold text-primary hover:bg-bg-subtle transition-colors cursor-pointer shadow-xs"
-                    >
-                      {showAadhaar ? 'Hide' : 'Show'}
-                    </button>
-                  </div>
-
-                  <div className="bg-[#FAF9F5] border border-border-default/50 rounded-2xl p-4 flex items-center justify-between">
-                    <div>
-                      <div className="flex items-center gap-1.5 text-caption text-secondary font-medium">
-                        <span>PAN</span>
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                        </svg>
-                      </div>
-                      <div className="font-bold font-mono text-primary text-body-small mt-1">
-                        {showPan ? (employee.personalDetail?.panFull || employee.panFull || '-') : (employee.personalDetail?.panMasked || employee.panMasked || 'XXXXX XXXX X')}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowPan(!showPan)}
-                      className="px-3 py-1 bg-white border border-border-default rounded-full text-caption font-semibold text-primary hover:bg-bg-subtle transition-colors cursor-pointer shadow-xs"
-                    >
-                      {showPan ? 'Hide' : 'Show'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'Communication' && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <TabDetailRenderer label="Personal phone" value={employee.communicationDetail?.personalPhone || employee.personalPhone || employee.phone || '-'} />
-                  <TabDetailRenderer label="Personal email" value={employee.communicationDetail?.personalEmail || employee.personalEmail || employee.email || '-'} />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <TabDetailRenderer label="Current address" value={employee.communicationDetail?.currentAddress || employee.currentAddress || '-'} />
-                  <TabDetailRenderer label="Permanent address" value={employee.communicationDetail?.permanentAddress || employee.permanentAddress || '-'} />
-                </div>
-
-                <TabDetailRenderer label="Emergency contact" value={employee.communicationDetail?.emergencyContact || employee.emergencyContact || '-'} />
-              </div>
-            )}
-
-            {activeTab === 'Documents' && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {docsList.map((doc: any, i: number) => {
-                    const isVerified = doc.verified || doc.status === 'Checked against original'
-                    return (
-                      <div
-                        key={i}
-                        className={`rounded-2xl p-6 text-center flex flex-col items-center justify-center space-y-2 ${
-                          isVerified
-                            ? 'bg-[#ECFDF5] border border-[#A7F3D0]'
-                            : 'bg-[#FFFBEB] border border-[#FDE68A]'
-                        }`}
-                      >
-                        <div
-                          className={`w-10 h-10 rounded-full text-white flex items-center justify-center font-bold text-title ${
-                            isVerified ? 'bg-[#10B981]' : 'bg-[#F59E0B]'
-                          }`}
-                        >
-                          {isVerified ? '✓' : '!'}
-                        </div>
-                        <div className="font-bold text-primary text-body-small">{doc.name}</div>
-                        <div
-                          className={`text-caption font-medium ${
-                            isVerified ? 'text-[#047857]' : 'text-[#B45309]'
-                          }`}
-                        >
-                          {isVerified ? (doc.status || 'Checked against original') : 'Document unverified'}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'Employment' && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <TabDetailRenderer label="Vertical" value={employee.vertical || '-'} />
-                  <TabDetailRenderer label="Role" value={employee.role || '-'} />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <TabDetailRenderer label="Probation period" value={employee.employmentDetail?.probationPeriod || employee.probationPeriod || '-'} />
-                  <TabDetailRenderer label="Financial agreement" value={employee.employmentDetail?.financialAgreement || employee.financialAgreement || '-'} />
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'Financial' && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <TabDetailRenderer label="Take home pay" value={employee.financialDetail?.takeHomePay || employee.takeHomePay || '-'} />
-                  <TabDetailRenderer label="Bank account" value={employee.financialDetail?.bankAccount || employee.bankAccount || '-'} />
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'System data' && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <TabDetailRenderer label="System Employee ID" value={employee.employeeId || employeeId || '-'} />
-                  <TabDetailRenderer label="Status" value={employee.onboardingStatus || employee.employmentStatus || 'Active'} />
-                </div>
-              </div>
-            )}
+          <div className="lg:col-span-8 bg-[#ffffffc7] backdrop-blur-xs border border-border-default/80 rounded-3xl p-6 shadow-xs">
+            <TabContent tab={activeTab} employee={employee} />
           </div>
 
-          {/* Right Column (Documents Summary Widget Card - 5 cols) */}
-          <div className="lg:col-span-5 bg-white border border-border-default/80 rounded-3xl p-6 sm:p-8 shadow-xs space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-title font-serif font-bold text-primary">Documents</h2>
-              <span
-                className={`px-3 py-1 rounded-full text-caption font-semibold ${
-                  verifiedCount === totalCount && totalCount > 0
-                    ? 'bg-[#DCFCE7] text-[#15803D]'
-                    : 'bg-[#FEF3C7] text-[#D97706]'
-                }`}
+          <div className="lg:col-span-4 bg-[#ffffffc7] backdrop-blur-xs border border-border-default/80 rounded-3xl p-6 shadow-xs space-y-3">
+            <h3 className="text-h4 font-serif font-bold text-primary">Documents</h3>
+            {docError && <p className="text-caption text-error">{docError}</p>}
+            {documents.length === 0 && <p className="text-caption text-secondary">No documents.</p>}
+            {documents.map((doc) => (
+              <div
+                key={doc.document}
+                className="flex items-center justify-between bg-white border border-border-default rounded-xl px-3 py-2"
               >
-                {verifiedCount} of {totalCount} verified
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              {docsList.map((doc: any, i: number) => {
-                const isVerified = doc.verified || doc.status === 'Checked against original'
-                return (
-                  <div
-                    key={i}
-                    className={`rounded-2xl p-5 text-center flex flex-col items-center justify-center space-y-2 ${
-                      isVerified
-                        ? 'bg-[#ECFDF5] border border-[#A7F3D0]'
-                        : 'bg-[#FFFBEB] border border-[#FDE68A]'
-                    }`}
-                  >
-                    <div
-                      className={`w-9 h-9 rounded-full text-white flex items-center justify-center font-bold text-body-small ${
-                        isVerified ? 'bg-[#10B981]' : 'bg-[#F59E0B]'
-                      }`}
-                    >
-                      {isVerified ? '✓' : '!'}
-                    </div>
-                    <div className="font-bold text-primary text-body-small">{doc.name}</div>
-                    <div
-                      className={`text-[11px] font-medium ${
-                        isVerified ? 'text-[#047857]' : 'text-[#B45309]'
-                      }`}
-                    >
-                      {isVerified ? (doc.status || 'Checked against original') : 'Document unverified'}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+                <span className="text-caption font-medium text-primary">{doc.label}</span>
+                <button
+                  type="button"
+                  onClick={() => openDocument(doc.document)}
+                  className="text-caption font-semibold text-primary underline cursor-pointer"
+                >
+                  View
+                </button>
+              </div>
+            ))}
           </div>
         </div>
       </div>
-    </AppLayout >
+
+      <HistoryDrawer employeeId={employee.id} open={historyOpen} onClose={() => setHistoryOpen(false)} />
+    </AppLayout>
   )
 }

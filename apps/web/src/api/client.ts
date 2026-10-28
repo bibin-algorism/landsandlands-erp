@@ -33,8 +33,9 @@ apiClient.interceptors.response.use(
       localStorage.removeItem('access_token')
     }
 
+    const rawMessage = error.response?.data?.message
     const message =
-      error.response?.data?.message ||
+      (Array.isArray(rawMessage) ? rawMessage.join('; ') : rawMessage) ||
       error.response?.data?.error ||
       error.message ||
       'An unexpected error occurred.'

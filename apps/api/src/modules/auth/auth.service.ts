@@ -524,31 +524,33 @@ export class AuthService {
     userAgent?: string,
     metadata?: Record<string, any>,
   ) {
-    await this.prisma.authActivityLog.create({
-      data: {
-        userId,
-        identifier,
-        action,
-        ipAddress,
-        userAgent,
-        metadata,
-      },
-    });
-
-    await this.prisma.outboxEvent.create({
-      data: {
-        eventType: `AUTH_${action}`,
-        aggregateType: 'USER',
-        aggregateId: userId || identifier,
-        payload: {
+    await this.prisma.$transaction(async (tx) => {
+      await tx.authActivityLog.create({
+        data: {
+          userId,
           identifier,
           action,
           ipAddress,
           userAgent,
           metadata,
-          timestamp: new Date().toISOString(),
         },
-      },
+      });
+
+      await tx.outboxEvent.create({
+        data: {
+          eventType: `AUTH_${action}`,
+          aggregateType: 'USER',
+          aggregateId: userId || identifier,
+          payload: {
+            identifier,
+            action,
+            ipAddress,
+            userAgent,
+            metadata,
+            timestamp: new Date().toISOString(),
+          },
+        },
+      });
     });
   }
 }

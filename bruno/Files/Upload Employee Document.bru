@@ -1,0 +1,19 @@
+meta {
+  name: Upload Employee Document
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/files/employee-documents
+  body: multipartForm
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:multipart-form {
+  file: @file(/path/to/document.jpg)
+}

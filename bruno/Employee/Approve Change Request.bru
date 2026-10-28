@@ -1,0 +1,15 @@
+meta {
+  name: Approve Change Request
+  type: http
+  seq: 20
+}
+
+post {
+  url: {{baseUrl}}/api/v1/employees/change-requests/{{changeRequestId}}/approve
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

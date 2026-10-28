@@ -10,9 +10,11 @@
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,json,md,yml}\"",
     "prepare": "husky",
+    "db:setup": "pnpm --filter @landsandlands/shared build && pnpm db:deploy && pnpm db:generate && pnpm db:seed",
     "db:migrate": "dotenv -e apps/api/.env -- prisma migrate dev --schema=apps/api/prisma/schema.prisma",
+    "db:migrate:create": "dotenv -e apps/api/.env -- prisma migrate dev --create-only --schema=apps/api/prisma/schema.prisma",
     "db:deploy": "dotenv -e apps/api/.env -- prisma migrate deploy --schema=apps/api/prisma/schema.prisma",
-    "db:push": "dotenv -e apps/api/.env -- prisma db push --schema=apps/api/prisma/schema.prisma",
+    "db:status": "dotenv -e apps/api/.env -- prisma migrate status --schema=apps/api/prisma/schema.prisma",
     "db:generate": "prisma generate --schema=apps/api/prisma/schema.prisma",
     "db:seed": "dotenv -e apps/api/.env -- prisma db seed --schema=apps/api/prisma/schema.prisma"
   },

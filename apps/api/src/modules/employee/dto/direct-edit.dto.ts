@@ -1,11 +1,17 @@
-import { IsString, IsNotEmpty, IsObject } from 'class-validator';
+import { IsISO8601, IsObject, IsOptional, IsString, MaxLength } from 'class-validator';
 
+/** HR direct edit (FR-24): field key → new value, validated against the field catalogue. */
 export class DirectEditDto {
   @IsObject()
-  @IsNotEmpty()
-  fieldUpdates: Record<string, any>;
+  changes: Record<string, unknown>;
 
+  /** Optional for direct edits (implementation plan, decision 4). */
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  reason: string;
+  @MaxLength(500)
+  reason?: string;
+
+  /** The record's updatedAt when the edit form was loaded; a newer record returns 409. */
+  @IsISO8601()
+  expectedUpdatedAt: string;
 }

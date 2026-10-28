@@ -6,44 +6,46 @@ import DataTable from '../../components/common/DataTable'
 import { useEmployees } from '../../hooks/useEmployees'
 import type { EmployeeListItem } from '../../api/types'
 import { getEmployeeColumns } from './employeeColumns'
+import { getCurrentRole, isHrEditor } from '../../utils/currentUser'
 
 export default function EmployeesPage() {
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState<'All' | 'Active' | 'Incomplete' | 'Terminated'>('All')
+  const role = getCurrentRole()
+  const canManage = isHrEditor(role)
+  // BRQ-14: the terminated list is visible to HR and the MD only (the API enforces it)
+  const canSeeTerminated = canManage || role === 'ADMIN'
+  const [activeTab, setActiveTab] = useState<'Active' | 'Incomplete' | 'Terminated'>('Active')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedVertical] = useState<string | undefined>()
 
-  const { data: apiEmployees } = useEmployees(selectedVertical)
-  const employeeList = apiEmployees || []
+  const { data: activeEmployees = [] } = useEmployees({ vertical: selectedVertical })
+  const { data: terminatedEmployees = [] } = useEmployees({ vertical: selectedVertical, status: 'TERMINATED' })
+  const terminatedList = canSeeTerminated ? terminatedEmployees : []
 
-  const totalCount = employeeList.length
-  const activeCount = employeeList.filter(e => (e.onboardingStatus || e.employmentStatus) === 'Active' || e.employmentStatus === 'ACTIVE').length
-  const incompleteCount = employeeList.filter(e => e.onboardingStatus === 'Incomplete').length
-  const terminatedCount = employeeList.filter(e => e.onboardingStatus === 'Terminated' || e.employmentStatus === 'TERMINATED').length
+  const activeCount = activeEmployees.length
+  const incompleteCount = activeEmployees.filter((e) => e.isIncomplete).length
+  const terminatedCount = terminatedList.length
 
-  const filteredEmployees = employeeList.filter((emp) => {
-    const status = emp.onboardingStatus || emp.employmentStatus || 'ACTIVE'
-    const matchesTab =
-      activeTab === 'All'
-        ? true
-        : activeTab === 'Active'
-        ? status === 'Active' || status === 'ACTIVE'
-        : activeTab === 'Incomplete'
-        ? status === 'Incomplete'
-        : status === 'Terminated' || status === 'TERMINATED'
+  const tabEmployees =
+    activeTab === 'Terminated'
+      ? terminatedList
+      : activeTab === 'Incomplete'
+        ? activeEmployees.filter((e) => e.isIncomplete)
+        : activeEmployees
+  const totalCount = tabEmployees.length
 
-    const fullName = emp.fullName || `${emp.firstName || ''} ${emp.lastName || ''}`.trim()
-    const email = emp.communicationDetail?.officialEmail || emp.communicationDetail?.personalEmail || emp.email || ''
-    const phone = emp.communicationDetail?.officialPhone || emp.communicationDetail?.personalPhone || emp.phone || ''
-
-    const matchesSearch =
-      !searchQuery.trim() ||
-      fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      emp.employeeId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      phone.includes(searchQuery)
-
-    return matchesTab && matchesSearch
+  const filteredEmployees = tabEmployees.filter((emp) => {
+    const fullName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim()
+    const email = emp.communicationDetail?.officialEmail || ''
+    const phone = emp.communicationDetail?.officialPhone || ''
+    const q = searchQuery.trim().toLowerCase()
+    return (
+      !q ||
+      fullName.toLowerCase().includes(q) ||
+      emp.employeeId.toLowerCase().includes(q) ||
+      email.toLowerCase().includes(q) ||
+      phone.includes(q)
+    )
   })
 
   return (
@@ -68,16 +70,18 @@ export default function EmployeesPage() {
                 Export
               </button>
 
-              <button
-                type="button"
-                onClick={() => navigate('/employees/new')}
-                className="flex items-center gap-2 px-5 py-2.5 bg-brand-accent text-primary text-body-small font-medium rounded-xl hover:opacity-90 transition-opacity cursor-pointer shadow-xs"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                </svg>
-                Add employee
-              </button>
+              {canManage && (
+                <button
+                  type="button"
+                  onClick={() => navigate('/employees/new')}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-brand-accent text-primary text-body-small font-medium rounded-xl hover:opacity-90 transition-opacity cursor-pointer shadow-xs"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Add employee
+                </button>
+              )}
             </>
           }
         />
@@ -86,21 +90,6 @@ export default function EmployeesPage() {
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           {/* Status Tabs */}
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setActiveTab('All')}
-              className={`px-4 py-2 rounded-full text-caption font-semibold transition-all cursor-pointer flex items-center gap-2 ${
-                activeTab === 'All'
-                  ? 'bg-[#18181B] text-white shadow-xs'
-                  : 'bg-surface-card text-secondary border border-border-default hover:text-primary'
-              }`}
-            >
-              <span>All</span>
-              <span className={`px-2 py-0.5 rounded-full text-[11px] ${activeTab === 'All' ? 'bg-[#27272A] text-amber-300' : 'bg-bg-subtle text-secondary'}`}>
-                {totalCount}
-              </span>
-            </button>
-
             <button
               type="button"
               onClick={() => setActiveTab('Active')}
@@ -131,20 +120,22 @@ export default function EmployeesPage() {
               </span>
             </button>
 
-            <button
-              type="button"
-              onClick={() => setActiveTab('Terminated')}
-              className={`px-4 py-2 rounded-full text-caption font-semibold transition-all cursor-pointer flex items-center gap-2 ${
-                activeTab === 'Terminated'
-                  ? 'bg-[#18181B] text-white shadow-xs'
-                  : 'bg-surface-card text-secondary border border-border-default hover:text-primary'
-              }`}
-            >
-              <span>Terminated</span>
-              <span className={`px-2 py-0.5 rounded-full text-[11px] ${activeTab === 'Terminated' ? 'bg-[#27272A] text-amber-300' : 'bg-bg-subtle text-secondary'}`}>
-                {terminatedCount}
-              </span>
-            </button>
+            {canSeeTerminated && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('Terminated')}
+                className={`px-4 py-2 rounded-full text-caption font-semibold transition-all cursor-pointer flex items-center gap-2 ${
+                  activeTab === 'Terminated'
+                    ? 'bg-[#18181B] text-white shadow-xs'
+                    : 'bg-surface-card text-secondary border border-border-default hover:text-primary'
+                }`}
+              >
+                <span>Terminated</span>
+                <span className={`px-2 py-0.5 rounded-full text-[11px] ${activeTab === 'Terminated' ? 'bg-[#27272A] text-amber-300' : 'bg-bg-subtle text-secondary'}`}>
+                  {terminatedCount}
+                </span>
+              </button>
+            )}
           </div>
 
           {/* Search & Dropdown Filters */}
@@ -201,29 +192,21 @@ export default function EmployeesPage() {
           onRowClick={(emp) => navigate(`/employees/${emp.employeeId}`)}
           emptyMessage="No employees found matching criteria."
           columns={getEmployeeColumns()}
-          kebabMenuItems={() => [
-            {
-              label: 'Edit',
-              icon: (
-                <svg className="w-4 h-4 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-              ),
-              onClick: (item) => navigate(`/employees/${item.employeeId}/edit`),
-            },
-            {
-              label: 'Delete',
-              variant: 'danger',
-              icon: (
-                <svg className="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              ),
-              onClick: (_item) => {
-                // handle delete action
-              },
-            },
-          ]}
+          kebabMenuItems={
+            canManage && activeTab !== 'Terminated'
+              ? () => [
+                  {
+                    label: 'Edit',
+                    icon: (
+                      <svg className="w-4 h-4 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    ),
+                    onClick: (item) => navigate(`/employees/${item.employeeId}/edit`),
+                  },
+                ]
+              : undefined
+          }
           pagination={{
             showingText: `Showing ${filteredEmployees.length > 0 ? 1 : 0}–${filteredEmployees.length} of ${totalCount} employees`,
             isPreviousDisabled: true,

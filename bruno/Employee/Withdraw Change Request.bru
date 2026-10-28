@@ -1,0 +1,15 @@
+meta {
+  name: Withdraw Change Request
+  type: http
+  seq: 17
+}
+
+post {
+  url: {{baseUrl}}/api/v1/employees/me/change-requests/{{changeRequestId}}/cancel
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

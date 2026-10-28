@@ -20,53 +20,65 @@ auth:bearer {
 
 body:json {
   {
-    "firstName": "Rahul",
-    "lastName": "Sharma",
-    "dateOfBirth": "1994-08-15",
-    "gender": "MALE",
-    "bloodGroup": "O_POSITIVE",
-    "maritalStatus": "SINGLE",
-    "fatherName": "Vikram Sharma",
-    "personalPhone": "+919876543210",
-    "secondaryPhone": "+919876543211",
-    "officialPhone": "+919876540001",
-    "personalEmail": "rahul.sharma.personal@example.com",
-    "officialEmail": "rahul.sharma@landsandlands.com",
-    "currentAddress": "123 MG Road, Bangalore, Karnataka - 560001",
-    "permanentAddress": "45 Park Street, Mysuru, Karnataka - 570001",
+    "firstName": "Priya",
+    "lastName": "Raman",
+    "dateOfBirth": "1996-03-14",
+    "gender": "Female",
+    "bloodGroup": "B+",
+    "maritalStatus": "Single",
+    "fatherName": "Raman K",
+    "personalPhone": "9841023456",
+    "secondaryPhone": "9443011872",
+    "officialPhone": "9000000001",
+    "personalEmail": "priya.raman@gmail.com",
+    "officialEmail": "priya.r@landsandlands.in",
+    "currentAddress": "12, Gandhi Street, R.S. Puram, Coimbatore 641002",
+    "permanentAddress": "12, Gandhi Street, R.S. Puram, Coimbatore 641002",
     "emergencyContacts": [
       {
-        "name": "Vikram Sharma",
+        "name": "Raman K",
         "relationship": "Father",
-        "phone": "+919845012345",
-        "isPrimary": true
+        "phone": "9894055210"
       }
     ],
-    "aadhaarNumber": "987654321098",
-    "drivingLicenceNumber": "KA0120150098765",
-    "highestQualification": "UG_DEGREE",
-    "previousOrgDocStatus": "BOTH",
-    "employeeBackground": "FRESHER",
-    "vertical": "PRIMARY",
+    "aadhaarNumber": "582190344821",
+    "aadhaarFrontUrl": "<key from Upload Employee Document>",
+    "aadhaarBackUrl": "<key from Upload Employee Document>",
+    "drivingLicenceNumber": "TN3820190012345",
+    "drivingLicenceFrontUrl": "<key from Upload Employee Document>",
+    "drivingLicenceBackUrl": "<key from Upload Employee Document>",
+    "highestQualification": "TWELFTH",
+    "educationalDocuments": [
+      {
+        "qualificationLevel": "TENTH",
+        "frontImageUrl": "<key from Upload Employee Document>",
+        "backImageUrl": "<key from Upload Employee Document>"
+      },
+      {
+        "qualificationLevel": "TWELFTH",
+        "frontImageUrl": "<key from Upload Employee Document>",
+        "backImageUrl": "<key from Upload Employee Document>"
+      }
+    ],
+    "employeeBackground": "EXPERIENCED",
+    "previousOrgDocStatus": "ONE",
+    "salarySlipUrl": "<key from Upload Employee Document>",
+    "secondDocDueDate": "2026-11-27",
+    "vertical": "Residential Rental",
     "role": "EXECUTIVE",
     "jobType": "PERMANENT",
-    "joiningDate": "2026-10-01",
-    "probationPeriod": "6 Months",
-    "financialAgreement": "Standard probation agreement",
-    "accountNumber": "9180100987654321",
-    "accountHolderName": "Rahul Sharma",
-    "ifscCode": "UTIB0000123",
-    "branchName": "Indiranagar Branch",
-    "takeHomePayTotal": 65000,
-    "cashComponent": 15000,
-    "bankComponent": 50000,
-    "nextAppraisalWindow": "2027-04-01",
-    "initialPassword": "TempPassword@2026"
-  }
-}
-
-script:post-response {
-  if (res.body.id) {
-    bru.setEnvVar("employeeId", res.body.id);
+    "joiningDate": "2026-10-28",
+    "reportingAuthorityId": "<manager employee UUID>",
+    "onProbation": true,
+    "probationPeriod": "6 months",
+    "financialAgreement": "₹18,000 stipend",
+    "accountNumber": "501004821773",
+    "accountHolderName": "Priya Raman",
+    "ifscCode": "HDFC0001234",
+    "branchName": "R.S. Puram",
+    "takeHomePayTotal": 42000,
+    "bankComponent": 40000,
+    "cashComponent": 2000,
+    "nextAppraisalWindow": "2027-04-01"
   }
 }

@@ -8,11 +8,24 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
 import { QueryClientsDto } from './dto/query-clients.dto';
-import { UserRole, ClientType, ClientStatus } from '@landsandlands/shared';
+import {
+  UserRole,
+  ClientType,
+  ClientStatus,
+  AuditAction,
+  AuditEntityType,
+} from '@landsandlands/shared';
+import { AuditService } from '../audit/audit.service';
+
+// PII fields whose values must not be copied into the audit trail.
+const AUDIT_REDACTED_FIELDS = ['panNumber', 'aadhaarNumber'] as const;
 
 @Injectable()
 export class ClientService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditService: AuditService,
+  ) {}
 
   /**
    * Helper: Generate unique CL-XXXXX code
@@ -122,6 +135,18 @@ export class ClientService {
               lastName: true,
             },
           },
+        },
+      });
+
+      await this.auditService.record(tx, {
+        actorUserId: userId,
+        action: AuditAction.CLIENT_CREATED,
+        entityType: AuditEntityType.CLIENT,
+        entityId: created.id,
+        metadata: {
+          clientCode: created.clientCode,
+          clientType: created.clientType,
+          primaryRMId: created.primaryRMId,
         },
       });
 
@@ -317,47 +342,71 @@ export class ClientService {
   async updateClient(id: string, dto: UpdateClientDto, user: { userId: string; role: string }) {
     await this.getClientById(id, user);
 
-    const updated = await this.prisma.client.update({
-      where: { id },
-      data: {
-        clientType: dto.clientType,
-        status: dto.status,
-        primaryRMId: dto.primaryRMId,
-        profile: {
-          update: {
-            firstName: dto.firstName,
-            lastName: dto.lastName,
-            companyName: dto.companyName,
-            panNumber: dto.panNumber,
-            aadhaarNumber: dto.aadhaarNumber,
-            gstNumber: dto.gstNumber,
-          },
-        },
-        contact: {
-          update: {
-            primaryPhone: dto.primaryPhone,
-            secondaryPhone: dto.secondaryPhone,
-            email: dto.email,
-            currentAddress: dto.currentAddress,
-            permanentAddress: dto.permanentAddress,
-          },
-        },
-      },
-      include: {
-        profile: true,
-        contact: true,
-        acquiredBy: true,
-        primaryRM: true,
-      },
-    });
+    const clientFields = {
+      clientType: dto.clientType,
+      status: dto.status,
+      primaryRMId: dto.primaryRMId,
+    };
+    const profileFields = {
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+      companyName: dto.companyName,
+      panNumber: dto.panNumber,
+      aadhaarNumber: dto.aadhaarNumber,
+      gstNumber: dto.gstNumber,
+    };
+    const contactFields = {
+      primaryPhone: dto.primaryPhone,
+      secondaryPhone: dto.secondaryPhone,
+      email: dto.email,
+      currentAddress: dto.currentAddress,
+      permanentAddress: dto.permanentAddress,
+    };
 
-    return updated;
+    return this.prisma.$transaction(async (tx) => {
+      const before = await tx.client.findUniqueOrThrow({
+        where: { id },
+        include: { profile: true, contact: true },
+      });
+
+      const updated = await tx.client.update({
+        where: { id },
+        data: {
+          ...clientFields,
+          profile: { update: profileFields },
+          contact: { update: contactFields },
+        },
+        include: {
+          profile: true,
+          contact: true,
+          acquiredBy: true,
+          primaryRM: true,
+        },
+      });
+
+      const changes = [
+        ...this.auditService.diff(before, clientFields),
+        ...this.auditService.diff(before.profile ?? {}, profileFields, AUDIT_REDACTED_FIELDS),
+        ...this.auditService.diff(before.contact ?? {}, contactFields),
+      ];
+      if (changes.length) {
+        await this.auditService.record(tx, {
+          actorUserId: user.userId,
+          action: AuditAction.CLIENT_UPDATED,
+          entityType: AuditEntityType.CLIENT,
+          entityId: id,
+          changes,
+        });
+      }
+
+      return updated;
+    });
   }
 
   /**
    * 5. Assign Primary RM
    */
-  async assignPrimaryRM(id: string, primaryRMId: string) {
+  async assignPrimaryRM(id: string, primaryRMId: string, actorUserId: string) {
     const rm = await this.prisma.employee.findUnique({
       where: { id: primaryRMId },
     });
@@ -365,19 +414,36 @@ export class ClientService {
       throw new NotFoundException(`Employee with ID ${primaryRMId} not found.`);
     }
 
-    return this.prisma.client.update({
-      where: { id },
-      data: { primaryRMId },
-      include: {
-        primaryRM: {
-          select: {
-            id: true,
-            employeeId: true,
-            firstName: true,
-            lastName: true,
+    return this.prisma.$transaction(async (tx) => {
+      const before = await tx.client.findUnique({ where: { id } });
+      if (!before) {
+        throw new NotFoundException(`Client with ID ${id} not found.`);
+      }
+
+      const updated = await tx.client.update({
+        where: { id },
+        data: { primaryRMId },
+        include: {
+          primaryRM: {
+            select: {
+              id: true,
+              employeeId: true,
+              firstName: true,
+              lastName: true,
+            },
           },
         },
-      },
+      });
+
+      await this.auditService.record(tx, {
+        actorUserId,
+        action: AuditAction.CLIENT_PRIMARY_RM_REASSIGNED,
+        entityType: AuditEntityType.CLIENT,
+        entityId: id,
+        changes: [{ field: 'primaryRMId', old: before.primaryRMId, new: primaryRMId }],
+      });
+
+      return updated;
     });
   }
 }

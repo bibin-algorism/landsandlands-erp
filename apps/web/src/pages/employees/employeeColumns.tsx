@@ -1,5 +1,6 @@
 import type { Column } from '../../components/common/DataTable'
-import type { EmployeeListItem } from '../../api/types'
+import type { EmployeeListItem, EmployeeRoleType } from '../../api/types'
+import { ROLE_LABELS } from '../../constants/employee'
 import Avatar from '../../components/common/Avatar'
 import StatusBadge from '../../components/common/StatusBadge'
 
@@ -60,39 +61,23 @@ export const getEmployeeColumns = (): Column<EmployeeListItem>[] => [
     key: 'role',
     header: 'Role',
     cellClassName: 'text-body-small font-medium text-primary capitalize',
-    render: (emp) => emp.employmentDetail?.role || emp.role || '-',
+    render: (emp) => {
+      const role = (emp.employmentDetail?.role || emp.role) as EmployeeRoleType | undefined
+      return role ? (ROLE_LABELS[role] ?? role) : '-'
+    },
   },
   {
     key: 'status',
     header: 'Status',
     render: (emp) => {
-      let status = emp.onboardingStatus || emp.employmentStatus || 'ACTIVE'
-      status = status.toLowerCase().charAt(0).toUpperCase() + status.toLowerCase().slice(1)
-
-      if (status === 'Incomplete') {
-        return (
-          <StatusBadge
-            value="Incomplete"
-            color="bg-feedback-success-bg text-feedback-success-fg"
-          />
-        )
+      if (emp.employmentStatus === 'TERMINATED') {
+        return <StatusBadge value="Terminated" color="bg-[#FEE2E2] text-[#B91C1C]" />
       }
-
-      if (status === 'Terminated' || status === 'TERMINATED') {
-        return (
-          <StatusBadge
-            value="Terminated"
-            color="bg-[#FEE2E2] text-[#B91C1C]"
-          />
-        )
+      // FR-07: a previous-organisation document is still due
+      if (emp.isIncomplete) {
+        return <StatusBadge value="Incomplete" color="bg-[#FEF3C7] text-[#B45309]" />
       }
-
-      return (
-        <StatusBadge
-          value="Active"
-          color="bg-[#DCFCE7] text-[#15803D]"
-        />
-      )
+      return <StatusBadge value="Active" color="bg-[#DCFCE7] text-[#15803D]" />
     },
   },
 ]

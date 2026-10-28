@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AppLayout from '../../components/layout/AppLayout'
 import PageHeader from '../../components/common/PageHeader'
-import { useCreateEmployee } from '../../hooks/useEmployees'
-import type { CreateEmployeePayload, CreateEmployeeResponse } from '../../api/types'
+import { useCreateEmployee, useEmployees } from '../../hooks/useEmployees'
+import type { CreateEmployeeResponse } from '../../api/types'
 
 import Step1Personal from '../../components/employees/Step1Personal'
 import Step2Communication from '../../components/employees/Step2Communication'
@@ -14,52 +14,11 @@ import Step6Review from '../../components/employees/Step6Review'
 import Step7Success from '../../components/employees/Step7Success'
 import WizardStepBar from '../../components/employees/WizardStepBar'
 import EmployeeSideCard from '../../components/employees/EmployeeSideCard'
-
-const INITIAL_FORM_DATA: CreateEmployeePayload = {
-  // Step 1
-  firstName: '',
-  lastName: '',
-  dateOfBirth: '',
-  gender: '',
-  bloodGroup: '',
-  maritalStatus: '',
-  fatherName: '',
-  aadhaarNumber: '',
-  panNumber: '',
-  drivingLicenceNumber: '',
-
-  // Step 2
-  personalPhone: '',
-  secondaryPhone: '',
-  officialPhone: '',
-  personalEmail: '',
-  officialEmail: '',
-  currentAddress: '',
-  permanentAddress: '',
-  emergencyContacts: [],
-
-  // Step 3
-  highestQualification: '',
-  previousOrgDocStatus: '',
-  employeeBackground: '',
-  documentFiles: {},
-
-  // Step 4
-  vertical: '',
-  role: '',
-  jobType: '',
-  joiningDate: '',
-  probationPeriod: '',
-  financialAgreement: '',
-
-  // Step 5
-  accountHolderName: '',
-  accountNumber: '',
-  ifscCode: '',
-  branchName: '',
-  takeHomePayTotal: 0,
-  nextAppraisalWindow: '',
-}
+import {
+  INITIAL_FORM_DATA,
+  buildCreatePayload,
+  type EmployeeFormData,
+} from '../../components/employees/employeeForm'
 
 const WIZARD_STEPS = [
   { step: 1, label: 'Personal' },
@@ -73,35 +32,33 @@ const WIZARD_STEPS = [
 export default function AddEmployeePage() {
   const navigate = useNavigate()
   const [currentStep, setCurrentStep] = useState(1)
-  const [formData, setFormData] = useState<CreateEmployeePayload>(INITIAL_FORM_DATA)
+  const [furthestStep, setFurthestStep] = useState(1)
+  const [formData, setFormData] = useState<EmployeeFormData>(INITIAL_FORM_DATA)
   const [createdResponse, setCreatedResponse] = useState<CreateEmployeeResponse | null>(null)
   const [isSignInSetUp, setIsSignInSetUp] = useState(false)
 
   const { createEmployeeAsync, isPending, error } = useCreateEmployee()
+  const { data: employees } = useEmployees()
+  const manager = employees?.find((emp) => emp.id === formData.reportingAuthorityId)
+  const managerName = manager ? `${manager.firstName} ${manager.lastName}` : undefined
 
-  const updateFormData = (fields: Partial<CreateEmployeePayload>) => {
-    setFormData((prev) => {
-      if (fields.documentFiles) {
-        return {
-          ...prev,
-          ...fields,
-          documentFiles: {
-            ...(prev.documentFiles || {}),
-            ...fields.documentFiles,
-          },
-        }
-      }
-      return { ...prev, ...fields }
-    })
+  // Documents merge per key so uploads that finish after other edits are not lost.
+  const updateFormData = (fields: Partial<EmployeeFormData>) => {
+    setFormData((prev) => ({
+      ...prev,
+      ...fields,
+      documents: fields.documents ? { ...prev.documents, ...fields.documents } : prev.documents,
+    }))
+  }
+
+  const goToStep = (step: number) => {
+    setCurrentStep(step)
+    setFurthestStep((prev) => Math.max(prev, step))
   }
 
   const handleSubmitFinal = async () => {
     try {
-      const payload: CreateEmployeePayload = {
-        ...formData,
-        initialPassword: formData.initialPassword || 'Lands@2026!Temp',
-      }
-      const res = await createEmployeeAsync(payload)
+      const res = await createEmployeeAsync(buildCreatePayload(formData))
       setCreatedResponse(res)
       setCurrentStep(7)
     } catch {
@@ -112,15 +69,14 @@ export default function AddEmployeePage() {
   const handleResetWizard = () => {
     setFormData(INITIAL_FORM_DATA)
     setCreatedResponse(null)
+    setIsSignInSetUp(false)
     setCurrentStep(1)
+    setFurthestStep(1)
   }
-
-  const fullName = `${formData.firstName} ${formData.lastName}`.trim() || 'New Employee'
 
   return (
     <AppLayout>
       <div className="space-y-6 text-left w-full pb-16">
-        {/* Top Header Row */}
         <PageHeader
           breadcrumbItems={[
             { label: 'People', path: '/employees' },
@@ -129,7 +85,7 @@ export default function AddEmployeePage() {
           ]}
           title="Add Employee"
           actions={
-            <>
+            currentStep < 7 && (
               <button
                 type="button"
                 onClick={() => navigate('/employees')}
@@ -137,62 +93,31 @@ export default function AddEmployeePage() {
               >
                 Cancel
               </button>
-
-              <button
-                type="button"
-                className="px-4 py-2 bg-white border border-border-default rounded-xl text-body-small font-medium text-primary hover:bg-bg-subtle transition-colors cursor-pointer shadow-xs"
-              >
-                Save draft
-              </button>
-            </>
+            )
           }
         />
 
-        {/* Dev Step Switcher Toolbar (Temporary for development) */}
-        {/* <div className="flex items-center gap-2 p-2 bg-[#F3F4F6] border border-[#E5E7EB] rounded-xl text-caption font-semibold text-secondary overflow-x-auto">
-          <span className="text-[11px] uppercase tracking-wider text-secondary px-2 font-bold shrink-0">
-            Dev Nav:
-          </span>
-          {[1, 2, 3, 4, 5, 6, 7].map((stepNum) => (
-            <button
-              key={stepNum}
-              type="button"
-              onClick={() => setCurrentStep(stepNum)}
-              className={`px-3 py-1 rounded-lg text-caption font-bold transition-all cursor-pointer shrink-0 ${
-                currentStep === stepNum
-                  ? 'bg-primary text-white shadow-xs'
-                  : 'bg-white text-secondary hover:text-primary border border-border-default hover:bg-bg-subtle'
-              }`}
-            >
-              {stepNum === 7 ? 'Step 7 (Success)' : `Step ${stepNum}`}
-            </button>
-          ))}
-        </div> */}
+        {currentStep < 7 && (
+          <WizardStepBar
+            steps={WIZARD_STEPS}
+            currentStep={currentStep}
+            onStepClick={(step) => {
+              if (step <= furthestStep) setCurrentStep(step)
+            }}
+          />
+        )}
 
-        {/* Wizard Steps Bar Component */}
-        <WizardStepBar
-          steps={WIZARD_STEPS}
-          currentStep={currentStep}
-          onStepClick={(step) => setCurrentStep(step)}
-        />
-
-        {/* 2-Column Form & Summary Card Container */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Left Column (Main Step Form - 8 cols) */}
           <div className="lg:col-span-8 bg-[#ffffffc7] backdrop-blur-xs border border-border-default/80 rounded-3xl p-6 sm:p-8 shadow-xs">
             {currentStep === 1 && (
-              <Step1Personal
-                formData={formData}
-                updateFormData={updateFormData}
-                onNext={() => setCurrentStep(2)}
-              />
+              <Step1Personal formData={formData} updateFormData={updateFormData} onNext={() => goToStep(2)} />
             )}
 
             {currentStep === 2 && (
               <Step2Communication
                 formData={formData}
                 updateFormData={updateFormData}
-                onNext={() => setCurrentStep(3)}
+                onNext={() => goToStep(3)}
                 onBack={() => setCurrentStep(1)}
               />
             )}
@@ -201,7 +126,7 @@ export default function AddEmployeePage() {
               <Step3Documents
                 formData={formData}
                 updateFormData={updateFormData}
-                onNext={() => setCurrentStep(4)}
+                onNext={() => goToStep(4)}
                 onBack={() => setCurrentStep(2)}
               />
             )}
@@ -210,7 +135,7 @@ export default function AddEmployeePage() {
               <Step4Employment
                 formData={formData}
                 updateFormData={updateFormData}
-                onNext={() => setCurrentStep(5)}
+                onNext={() => goToStep(5)}
                 onBack={() => setCurrentStep(3)}
               />
             )}
@@ -219,7 +144,7 @@ export default function AddEmployeePage() {
               <Step5Financial
                 formData={formData}
                 updateFormData={updateFormData}
-                onNext={() => setCurrentStep(6)}
+                onNext={() => goToStep(6)}
                 onBack={() => setCurrentStep(4)}
               />
             )}
@@ -227,6 +152,7 @@ export default function AddEmployeePage() {
             {currentStep === 6 && (
               <Step6Review
                 formData={formData}
+                managerName={managerName}
                 onSubmit={handleSubmitFinal}
                 onBack={() => setCurrentStep(5)}
                 onEditStep={(step) => setCurrentStep(step)}
@@ -235,21 +161,21 @@ export default function AddEmployeePage() {
               />
             )}
 
-            {currentStep === 7 && (
+            {currentStep === 7 && createdResponse && (
               <Step7Success
                 createdData={createdResponse}
                 formData={formData}
-                employeeName={fullName}
+                managerName={managerName}
                 onResetWizard={handleResetWizard}
                 onSignInSetUpChange={(isSetUp) => setIsSignInSetUp(isSetUp)}
               />
             )}
           </div>
 
-          {/* Right Column (Side Card Component - 4 cols) */}
           <EmployeeSideCard
             currentStep={currentStep}
             formData={formData}
+            managerName={managerName}
             createdResponse={createdResponse}
             isSignInSetUp={isSignInSetUp}
           />

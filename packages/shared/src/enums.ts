@@ -11,8 +11,7 @@ export {
   PreviousOrgDocStatus,
   EmployeeBackground,
   ChangeRequestStatus,
-  ChangeSource,
-  AuditActionType,
+  AuditActorType,
   ClientType,
   ClientStatus,
 } from '@prisma/client';

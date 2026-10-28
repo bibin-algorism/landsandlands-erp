@@ -1,0 +1,31 @@
+meta {
+  name: Reply To Query
+  type: http
+  seq: 16
+}
+
+put {
+  url: {{baseUrl}}/api/v1/employees/me/change-requests/{{changeRequestId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "fields": [
+      {
+        "fieldKey": "communication.currentAddress",
+        "proposedValue": "14, Race Course Road, Coimbatore 641018",
+        "proofFileKey": "<new proof key>"
+      }
+    ]
+  }
+}

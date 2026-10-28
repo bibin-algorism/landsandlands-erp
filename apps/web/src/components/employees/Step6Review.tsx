@@ -1,123 +1,103 @@
-import type { CreateEmployeePayload } from '../../api/types'
+import type { ReactNode } from 'react'
+import { JOB_TYPE_LABELS, QUALIFICATION_LABELS, BACKGROUND_LABELS, ROLE_LABELS } from '../../constants/employee'
 import ErrorAlert from '../ErrorAlert'
+import {
+  PREVIOUS_ORG_DOC_LABELS,
+  digitsOnly,
+  formatDate,
+  formatRupees,
+  isDocUploaded,
+  pendingPreviousOrgDoc,
+  requiredDocuments,
+  secondDocDueDate,
+  toRupees,
+  validateStep,
+  type EmployeeFormData,
+} from './employeeForm'
 
 export interface Step6ReviewProps {
-  formData: CreateEmployeePayload
+  formData: EmployeeFormData
+  managerName?: string
   onSubmit: () => void
   onBack: () => void
-  onEditStep?: (step: number) => void
+  onEditStep: (step: number) => void
   isSubmitting: boolean
   error: string | null
 }
 
+const STEP_NAMES: Record<number, string> = {
+  1: 'Personal',
+  2: 'Communication',
+  3: 'Documents',
+  4: 'Employment',
+  5: 'Financial',
+}
+
+const last4 = (value: string) => `••••${digitsOnly(value).slice(-4)}`
+
+function SummaryCard({
+  title,
+  step,
+  onEditStep,
+  invalid,
+  children,
+}: {
+  title: string
+  step: number
+  onEditStep: (step: number) => void
+  invalid: boolean
+  children: ReactNode
+}) {
+  return (
+    <div
+      className={`p-4 bg-white border rounded-2xl space-y-2 shadow-xs ${
+        invalid ? 'border-error' : 'border-border-default'
+      }`}
+    >
+      <div className="flex items-center justify-between">
+        <span className="text-caption font-bold text-primary">{title}</span>
+        <button
+          type="button"
+          onClick={() => onEditStep(step)}
+          className="text-caption font-semibold text-primary underline hover:text-secondary transition-colors cursor-pointer"
+        >
+          Edit
+        </button>
+      </div>
+      <div className="space-y-0.5">{children}</div>
+    </div>
+  )
+}
+
 export default function Step6Review({
   formData,
+  managerName,
   onSubmit,
   onBack,
   onEditStep,
   isSubmitting,
   error,
 }: Step6ReviewProps) {
-  const firstName = formData.firstName || 'Priya'
-  const lastName = formData.lastName || 'Raman'
-  const fullName = `${firstName} ${lastName}`.trim()
+  // FR-03: every Section 8 field must be complete before the record is created
+  const stepErrors = Object.keys(STEP_NAMES)
+    .map(Number)
+    .map((step) => ({ step, errors: Object.values(validateStep(step, formData)) }))
+    .filter((s) => s.errors.length > 0)
+  const canSubmit = stepErrors.length === 0 && !isSubmitting
 
-  // Format Aadhaar & PAN masked strings
-  const cleanAadhaar = (formData.aadhaarNumber || '').replace(/\D/g, '')
-  const last4Aadhaar = cleanAadhaar ? cleanAadhaar.slice(-4) : '4821'
+  const docs = requiredDocuments(formData)
+  const uploadedCount = docs.filter((doc) => isDocUploaded(formData, doc.key)).length
+  const pendingDoc = pendingPreviousOrgDoc(formData)
+  const dueDate = secondDocDueDate(formData)
+  const invalidSteps = new Set(stepErrors.map((s) => s.step))
 
-  const cleanPan = formData.panNumber || ''
-  const last4Pan = cleanPan ? cleanPan.slice(-4) : '234F'
-
-  // Dynamic Document counts and missing items list
-  const docFiles = formData.documentFiles || {}
-  const qual = formData.highestQualification || 'UG_DEGREE'
-  const bg = formData.employeeBackground || 'FRESHER'
-
-  const docItems: { key: string; label: string }[] = [
-    { key: 'aadhaarFront', label: 'Aadhaar front' },
-    { key: 'aadhaarBack', label: 'Aadhaar back' },
-    { key: 'panFront', label: 'PAN front' },
-    { key: 'drivingLicence', label: 'driving licence' },
-    { key: '10thMarkSheet', label: '10th' },
-  ]
-  if (qual === 'TWELFTH' || qual === 'UG_DEGREE' || qual === 'PG_DEGREE') {
-    docItems.push({ key: '12thMarkSheet', label: '12th' })
-  }
-  if (qual === 'UG_DEGREE' || qual === 'PG_DEGREE') {
-    docItems.push({ key: 'degreeCertificate', label: 'Degree certificate' })
-  }
-  if (qual === 'PG_DEGREE') {
-    docItems.push({ key: 'mastersCertificate', label: 'Master certificate' })
-  }
-  if (bg === 'EXPERIENCED') {
-    docItems.push(
-      { key: 'relievingExperience', label: 'Relieving letter' },
-      { key: 'salarySlip', label: 'Salary slip' }
-    )
-  } else if (bg === 'FREELANCER' || bg === 'ENTREPRENEUR') {
-    docItems.push({ key: 'recordOfIncome', label: 'Income proof' })
-  }
-
-  const uploadedDocs = docItems.filter(
-    (item) => docFiles[item.key]?.status === 'uploaded' || docFiles[item.key]?.status === 'verified'
-  )
-  const missingDocs = docItems.filter(
-    (item) => docFiles[item.key]?.status !== 'uploaded' && docFiles[item.key]?.status !== 'verified'
-  )
-
-  const uploadedCount = uploadedDocs.length
-  const totalCount = docItems.length
-  const missingCount = missingDocs.length
-
-  const missingLabelsText = missingDocs.map((d) => d.label).join(', ')
-
-  // Role label display
-  const roleLabel =
-    formData.role === 'EXECUTIVE'
-      ? 'Sales executive'
-      : formData.role === 'VERTICAL_HEAD'
-      ? 'Vertical Head'
-      : formData.role === 'MANAGEMENT_ADMIN'
-      ? 'Management Admin'
-      : formData.role === 'COO'
-      ? 'COO'
-      : formData.role === 'MANAGING_DIRECTOR'
-      ? 'Managing Director'
-      : formData.role || 'Sales executive'
-
-  // Manager name display
-  const managerName =
-    formData.reportingAuthorityId === 'LL-7K2Q9'
-      ? 'Karthik Raja'
-      : formData.reportingAuthorityId === 'LL-9P4W1'
-      ? 'Meena S'
-      : 'Arun Kumar'
-
-  // Format joining date string (e.g. 30 Sep 2026)
-  const formatJoiningDate = (dateStr?: string) => {
-    if (!dateStr) return '30 Sep 2026'
-    try {
-      const d = new Date(dateStr)
-      if (isNaN(d.getTime())) return dateStr
-      return `${d.getDate()} ${d.toLocaleString('en-US', { month: 'short' })} ${d.getFullYear()}`
-    } catch {
-      return dateStr
-    }
-  }
-
-  // Financial details formatting
-  const payTotal = formData.takeHomePayTotal || 42000
-  const accNum = formData.accountNumber || '50100 4821 7739'
-  const last4Acc = accNum.replace(/\D/g, '').slice(-4) || '7739'
-  const ifsc = formData.ifscCode || 'HDFC0001234'
-  const bankName = ifsc.toUpperCase().startsWith('HDFC') ? 'HDFC' : 'Bank'
-
-  const emergencyCount = (formData.emergencyContacts || []).length || 1
+  const role = formData.role ? ROLE_LABELS[formData.role] : '—'
+  const jobType = formData.jobType ? JOB_TYPE_LABELS[formData.jobType] : '—'
+  const cash = toRupees(formData.cashComponent)
+  const total = toRupees(formData.takeHomePayTotal)
 
   return (
     <div className="space-y-6 text-left">
-      {/* Header & Subtitle */}
       <div className="space-y-1">
         <h2 className="text-h2 font-serif font-bold text-primary">Review</h2>
         <p className="text-caption text-secondary font-medium">
@@ -125,155 +105,90 @@ export default function Step6Review({
         </p>
       </div>
 
-      {error && <ErrorAlert title="Submission Failed" message={error} />}
+      {error && <ErrorAlert title="Could not create the employee" message={error} />}
 
-      {/* Conditional Missing Docs Alert Banner */}
-      {missingCount > 0 && (
-        <div className="bg-[#FEF2F2] border border-[#FCA5A5] rounded-2xl p-3.5 text-caption font-medium text-[#B42318] flex items-center gap-2">
-          <span>⚠️</span>
-          <span>
-            {missingCount} document{missingCount > 1 ? 's are' : ' is'} still missing. {firstName} will be saved as "Incomplete" and reminded until they're added.
-          </span>
+      {stepErrors.length > 0 && (
+        <div className="bg-[#FEF2F2] border border-[#FCA5A5] rounded-2xl p-4 text-caption text-[#B42318] space-y-2">
+          <div className="font-bold">Complete these before creating the employee</div>
+          {stepErrors.map(({ step, errors }) => (
+            <div key={step}>
+              <button
+                type="button"
+                onClick={() => onEditStep(step)}
+                className="font-semibold underline cursor-pointer"
+              >
+                {STEP_NAMES[step]}
+              </button>
+              : {errors.slice(0, 3).join('; ')}
+              {errors.length > 3 && ` and ${errors.length - 3} more`}
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Summary Cards Grid (2 Columns) */}
+      {pendingDoc && (
+        <div className="bg-[#FFFBEB] border border-[#FDE68A] rounded-2xl p-3.5 text-caption font-medium text-[#B45309]">
+          {formData.firstName || 'The employee'} will be saved as Incomplete until the{' '}
+          {PREVIOUS_ORG_DOC_LABELS[pendingDoc].toLowerCase()} is submitted
+          {dueDate ? ` (due ${formatDate(dueDate)})` : ''}.
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* CARD 1: PERSONAL */}
-        <div className="p-4 bg-white border border-border-default rounded-2xl space-y-2 shadow-xs hover:border-border-strong transition-colors">
-          <div className="flex items-center justify-between">
-            <span className="text-caption font-bold text-primary">Personal</span>
-            {onEditStep && (
-              <button
-                type="button"
-                onClick={() => onEditStep(1)}
-                className="text-caption font-semibold text-primary underline hover:text-secondary transition-colors cursor-pointer"
-              >
-                Edit
-              </button>
-            )}
+        <SummaryCard title="Personal" step={1} onEditStep={onEditStep} invalid={invalidSteps.has(1)}>
+          <div className="text-caption font-bold text-primary">
+            {`${formData.firstName} ${formData.lastName}`.trim() || '—'} · {formData.gender || '—'} · Born{' '}
+            {formatDate(formData.dateOfBirth)}
           </div>
-          <div className="space-y-0.5">
-            <div className="text-caption font-bold text-primary">
-              {fullName} · {formData.gender || 'Female'} · {formData.dateOfBirth || '14 Mar 1996'}
-            </div>
-            <div className="text-[12px] text-secondary font-medium">
-              Aadhaar ****{last4Aadhaar} · PAN ****{last4Pan}
-            </div>
+          <div className="text-[12px] text-secondary font-medium">
+            Aadhaar {formData.aadhaarNumber ? last4(formData.aadhaarNumber) : '—'} · Licence{' '}
+            {formData.drivingLicenceNumber || '—'}
           </div>
-        </div>
+        </SummaryCard>
 
-        {/* CARD 2: COMMUNICATION */}
-        <div className="p-4 bg-white border border-border-default rounded-2xl space-y-2 shadow-xs hover:border-border-strong transition-colors">
-          <div className="flex items-center justify-between">
-            <span className="text-caption font-bold text-primary">Communication</span>
-            {onEditStep && (
-              <button
-                type="button"
-                onClick={() => onEditStep(2)}
-                className="text-caption font-semibold text-primary underline hover:text-secondary transition-colors cursor-pointer"
-              >
-                Edit
-              </button>
-            )}
+        <SummaryCard title="Communication" step={2} onEditStep={onEditStep} invalid={invalidSteps.has(2)}>
+          <div className="text-caption font-bold text-primary">
+            {formData.personalPhone || '—'} · {formData.officialEmail || '—'}
           </div>
-          <div className="space-y-0.5">
-            <div className="text-caption font-bold text-primary">
-              {formData.personalPhone || '+91 98410 23456'}
-            </div>
-            <div className="text-[12px] text-secondary font-medium">
-              Coimbatore · {emergencyCount} emergency contact{emergencyCount > 1 ? 's' : ''}
-            </div>
+          <div className="text-[12px] text-secondary font-medium">
+            {formData.emergencyContacts.length} emergency contact
+            {formData.emergencyContacts.length === 1 ? '' : 's'}
           </div>
-        </div>
+        </SummaryCard>
 
-        {/* CARD 3: DOCUMENTS */}
-        <div className="p-4 bg-white border border-border-default rounded-2xl space-y-2 shadow-xs hover:border-border-strong transition-colors">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-caption font-bold text-primary">Documents</span>
-              {missingCount > 0 && (
-                <span className="px-2 py-0.5 text-[11px] font-semibold bg-[#FEF2F2] border border-[#FCA5A5] text-[#B42318] rounded-full">
-                  {missingCount} missing
-                </span>
-              )}
-            </div>
-            {onEditStep && (
-              <button
-                type="button"
-                onClick={() => onEditStep(3)}
-                className="text-caption font-semibold text-primary underline hover:text-secondary transition-colors cursor-pointer"
-              >
-                Edit
-              </button>
-            )}
+        <SummaryCard title="Documents" step={3} onEditStep={onEditStep} invalid={invalidSteps.has(3)}>
+          <div className="text-caption font-bold text-primary">
+            {uploadedCount} of {docs.length} uploaded
           </div>
-          <div className="space-y-0.5">
-            <div className="text-caption font-bold text-primary">
-              {uploadedCount} of {totalCount} added
-            </div>
-            {missingCount > 0 ? (
-              <div className="text-[12px] text-secondary font-medium">
-                Missing: {missingLabelsText}
-              </div>
-            ) : (
-              <div className="text-[12px] text-[#047857] font-medium">
-                All documents uploaded ✓
-              </div>
-            )}
+          <div className="text-[12px] text-secondary font-medium">
+            {formData.highestQualification ? QUALIFICATION_LABELS[formData.highestQualification] : '—'} ·{' '}
+            {formData.employeeBackground ? BACKGROUND_LABELS[formData.employeeBackground] : '—'}
           </div>
-        </div>
+        </SummaryCard>
 
-        {/* CARD 4: EMPLOYMENT */}
-        <div className="p-4 bg-white border border-border-default rounded-2xl space-y-2 shadow-xs hover:border-border-strong transition-colors">
-          <div className="flex items-center justify-between">
-            <span className="text-caption font-bold text-primary">Employment</span>
-            {onEditStep && (
-              <button
-                type="button"
-                onClick={() => onEditStep(4)}
-                className="text-caption font-semibold text-primary underline hover:text-secondary transition-colors cursor-pointer"
-              >
-                Edit
-              </button>
-            )}
+        <SummaryCard title="Employment" step={4} onEditStep={onEditStep} invalid={invalidSteps.has(4)}>
+          <div className="text-caption font-bold text-primary">
+            {role} · {formData.vertical || '—'} · {jobType}
           </div>
-          <div className="space-y-0.5">
-            <div className="text-caption font-bold text-primary">
-              {roleLabel} · {formData.vertical || 'Sales'}
-            </div>
-            <div className="text-[12px] text-secondary font-medium">
-              Reports to {managerName} · Joins {formatJoiningDate(formData.joiningDate)}
-            </div>
+          <div className="text-[12px] text-secondary font-medium">
+            {formData.role === 'MANAGING_DIRECTOR' ? 'No reporting authority' : `Reports to ${managerName || '—'}`}{' '}
+            · Joins {formatDate(formData.joiningDate)} ·{' '}
+            {formData.onProbation ? `Probation ${formData.probationPeriod}` : 'No probation'}
           </div>
-        </div>
+        </SummaryCard>
 
-        {/* CARD 5: FINANCIAL */}
-        <div className="p-4 bg-white border border-border-default rounded-2xl space-y-2 shadow-xs hover:border-border-strong transition-colors">
-          <div className="flex items-center justify-between">
-            <span className="text-caption font-bold text-primary">Financial</span>
-            {onEditStep && (
-              <button
-                type="button"
-                onClick={() => onEditStep(5)}
-                className="text-caption font-semibold text-primary underline hover:text-secondary transition-colors cursor-pointer"
-              >
-                Edit
-              </button>
-            )}
+        <SummaryCard title="Financial" step={5} onEditStep={onEditStep} invalid={invalidSteps.has(5)}>
+          <div className="text-caption font-bold text-primary">
+            {Number.isInteger(total) ? `${formatRupees(total)} / month` : '—'}
+            {Number.isInteger(cash) && cash > 0 ? ` (${formatRupees(cash)} cash)` : ''}
           </div>
-          <div className="space-y-0.5">
-            <div className="text-caption font-bold text-primary">
-              ₹{payTotal.toLocaleString('en-IN')} / month
-            </div>
-            <div className="text-[12px] text-secondary font-medium">
-              Bank transfer · {bankName} ****{last4Acc}
-            </div>
+          <div className="text-[12px] text-secondary font-medium">
+            {formData.ifscCode || '—'} · A/c {formData.accountNumber ? last4(formData.accountNumber) : '—'} ·
+            Next appraisal {formatDate(formData.nextAppraisalWindow)}
           </div>
-        </div>
+        </SummaryCard>
       </div>
 
-      {/* Action Bar */}
       <div className="flex items-center justify-between pt-6 border-t border-border-default">
         <button
           type="button"
@@ -284,27 +199,13 @@ export default function Step6Review({
           Back
         </button>
 
-        <span className="text-caption text-secondary font-medium hidden sm:inline-block">
-          <span className="text-[#047857]">✓</span> Saved automatically · 10:42 am
-        </span>
-
         <button
           type="button"
           onClick={onSubmit}
-          disabled={isSubmitting}
-          className="px-6 py-2.5 bg-brand-accent text-primary text-caption font-bold rounded-xl hover:opacity-90 transition-opacity cursor-pointer shadow-xs disabled:opacity-50 flex items-center gap-2"
+          disabled={!canSubmit}
+          className="px-6 py-2.5 bg-brand-accent text-primary text-caption font-bold rounded-xl hover:opacity-90 transition-opacity cursor-pointer shadow-xs disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
-          {isSubmitting ? (
-            <>
-              <svg className="w-4 h-4 animate-spin text-primary" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-              <span>Creating employee...</span>
-            </>
-          ) : (
-            <span>Create employee</span>
-          )}
+          {isSubmitting ? 'Creating employee…' : 'Create employee'}
         </button>
       </div>
     </div>

@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import type { CreateEmployeePayload, CreateEmployeeResponse } from '../../api/types'
+import type { CreateEmployeeResponse } from '../../api/types'
+import { ROLE_LABELS } from '../../constants/employee'
+import { PREVIOUS_ORG_DOC_LABELS, formatDate, pendingPreviousOrgDoc, type EmployeeFormData } from './employeeForm'
 
 export interface Step7SuccessProps {
-  createdData: CreateEmployeeResponse | null
-  formData: CreateEmployeePayload
-  employeeName: string
+  createdData: CreateEmployeeResponse
+  formData: EmployeeFormData
+  managerName?: string
   onResetWizard: () => void
   onSignInSetUpChange?: (isSetUp: boolean) => void
 }
@@ -13,7 +15,7 @@ export interface Step7SuccessProps {
 export default function Step7Success({
   createdData,
   formData,
-  employeeName,
+  managerName,
   onResetWizard,
   onSignInSetUpChange,
 }: Step7SuccessProps) {
@@ -21,46 +23,15 @@ export default function Step7Success({
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isCopied, setIsCopied] = useState(false)
 
-  const employeeId = createdData?.employeeId || 'LL-7K2Q9'
-  const username = formData.officialEmail || formData.personalEmail || employeeId || 'priya.r@landsandlands.com'
-  const tempPassword = createdData?.temporaryPassword || createdData?.initialPassword || 'LL#Priya2026!'
-
-  const firstName = formData.firstName || 'Priya'
-  const roleLabel =
-    formData.role === 'EXECUTIVE'
-      ? 'Sales executive'
-      : formData.role === 'VERTICAL_HEAD'
-      ? 'Vertical Head'
-      : formData.role || 'Sales executive'
-  const vertical = formData.vertical || 'Sales'
-  const managerName =
-    formData.reportingAuthorityId === 'LL-7K2Q9'
-      ? 'Karthik Raja'
-      : formData.reportingAuthorityId === 'LL-9P4W1'
-      ? 'Meena S'
-      : 'Arun Kumar'
-
-  // Document missing count & due date
-  const docFiles = formData.documentFiles || {}
-  const qual = formData.highestQualification || 'UG_DEGREE'
-  const bg = formData.employeeBackground || 'FRESHER'
-  const docKeys = ['aadhaarFront', 'panFront', 'drivingLicence', '10thMarkSheet']
-  if (qual === 'TWELFTH' || qual === 'UG_DEGREE' || qual === 'PG_DEGREE') docKeys.push('12thMarkSheet')
-  if (qual === 'UG_DEGREE' || qual === 'PG_DEGREE') docKeys.push('degreeCertificate')
-  if (qual === 'PG_DEGREE') docKeys.push('mastersCertificate')
-  if (bg === 'EXPERIENCED') docKeys.push('relievingExperience', 'salarySlip')
-  else if (bg === 'FREELANCER' || bg === 'ENTREPRENEUR') docKeys.push('recordOfIncome')
-
-  const missingDocsCount = docKeys.filter(
-    (k) => docFiles[k]?.status !== 'uploaded' && docFiles[k]?.status !== 'verified'
-  ).length
-
-  const dueDateFormatted = (() => {
-    const start = formData.joiningDate ? new Date(formData.joiningDate) : new Date()
-    const target = new Date(start)
-    target.setDate(target.getDate() + 30)
-    return `${target.getDate()} ${target.toLocaleString('en-US', { month: 'short' })} ${target.getFullYear()}`
-  })()
+  const employeeId = createdData.employeeId
+  const employeeName = `${createdData.firstName} ${createdData.lastName}`
+  // Employees sign in with their Employee ID (User.identifier)
+  const username = employeeId
+  const tempPassword = createdData.temporaryPassword
+  const firstName = createdData.firstName
+  const roleLabel = formData.role ? ROLE_LABELS[formData.role] : ''
+  const reportingLine = formData.role === 'MANAGING_DIRECTOR' ? '' : ` · Reports to ${managerName ?? '—'}`
+  const pendingDoc = pendingPreviousOrgDoc(formData)
 
   const handleCopyBoth = () => {
     const credentialsText = `Username: ${username}\nPassword: ${tempPassword}`
@@ -89,7 +60,8 @@ export default function Step7Success({
           {employeeName} is added
         </h2>
         <p className="text-caption text-secondary font-medium">
-          {roleLabel} · {vertical} · Reports to {managerName}
+          {roleLabel} · {formData.vertical}
+          {reportingLine}
         </p>
       </div>
 
@@ -104,18 +76,19 @@ export default function Step7Success({
         </span>
       </div>
 
-      {/* Status Callout Banner */}
-      {missingDocsCount > 0 ? (
+      {/* Status Callout Banner (FR-07) */}
+      {createdData.isIncomplete ? (
         <div className="text-caption font-medium text-[#B42318] flex items-center gap-1.5 bg-[#FEF2F2] border border-[#FCA5A5] rounded-xl px-4 py-2">
           <span>🕒</span>
           <span>
-            Marked Incomplete — {missingDocsCount} document{missingDocsCount > 1 ? 's' : ''} due by {dueDateFormatted}
+            Marked Incomplete — {pendingDoc ? PREVIOUS_ORG_DOC_LABELS[pendingDoc].toLowerCase() : 'previous organisation document'}{' '}
+            due by {formatDate(createdData.secondDocDueDate)}
           </span>
         </div>
       ) : (
         <div className="text-caption font-medium text-[#047857] flex items-center gap-1.5 bg-[#ECFDF5] border border-[#A7F3D0] rounded-xl px-4 py-2">
           <span>✓</span>
-          <span>Marked Active — All required documents uploaded</span>
+          <span>Marked Active — all required documents collected</span>
         </div>
       )}
 
@@ -131,7 +104,7 @@ export default function Step7Success({
 
         <button
           type="button"
-          onClick={() => navigate('/employees')}
+          onClick={() => navigate(`/employees/${employeeId}`)}
           className="px-5 py-2.5 bg-white border border-border-default rounded-xl text-caption font-semibold text-primary hover:bg-bg-subtle transition-colors cursor-pointer shadow-xs"
         >
           View profile
@@ -163,10 +136,10 @@ export default function Step7Success({
 
             {/* Credentials Fields Box */}
             <div className="space-y-3 bg-[#F9FAFB] border border-[#E5E7EB] rounded-2xl p-4">
-              {/* Username Field */}
+              {/* Username Field (Employee ID) */}
               <div className="space-y-1">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-secondary">
-                  Username
+                  Username (Employee ID)
                 </label>
                 <div className="px-3.5 py-2 bg-white border border-border-default rounded-xl text-body-small font-mono font-semibold text-primary select-all">
                   {username}

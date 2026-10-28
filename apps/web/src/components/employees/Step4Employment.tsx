@@ -1,11 +1,39 @@
-import type { CreateEmployeePayload, EmployeeRoleType, JobType } from '../../api/types'
+import type { EmployeeRoleType, JobType } from '../../api/types'
+import {
+  BUSINESS_VERTICALS,
+  FUNCTIONAL_VERTICALS,
+  JOB_TYPE_LABELS,
+  ROLE_LABELS,
+} from '../../constants/employee'
+import { useEmployees } from '../../hooks/useEmployees'
+import type { EmployeeFormData } from './employeeForm'
+import {
+  ChoicePills,
+  Field,
+  SectionTitle,
+  SelectInput,
+  StepActions,
+  StepHeader,
+} from './FormControls'
+import { inputClass } from './formStyles'
+import { useStepValidation } from './useStepValidation'
 
 export interface Step4EmploymentProps {
-  formData: CreateEmployeePayload
-  updateFormData: (data: Partial<CreateEmployeePayload>) => void
+  formData: EmployeeFormData
+  updateFormData: (data: Partial<EmployeeFormData>) => void
   onNext: () => void
   onBack: () => void
 }
+
+const ROLE_OPTIONS = (Object.keys(ROLE_LABELS) as EmployeeRoleType[]).map((value) => ({
+  value,
+  label: ROLE_LABELS[value],
+}))
+
+const JOB_TYPE_OPTIONS = (Object.keys(JOB_TYPE_LABELS) as JobType[]).map((value) => ({
+  value,
+  label: JOB_TYPE_LABELS[value],
+}))
 
 export default function Step4Employment({
   formData,
@@ -13,216 +41,154 @@ export default function Step4Employment({
   onNext,
   onBack,
 }: Step4EmploymentProps) {
-  const hasProbation = formData.probationPeriod !== 'None'
+  const { errors, handleSubmit } = useStepValidation(4, formData, onNext)
+  const { data: employees, isLoading: isLoadingEmployees, isError: employeesFailed } = useEmployees()
 
-  const handleProbationToggle = (val: boolean) => {
-    updateFormData({
-      probationPeriod: val ? '3 Months' : 'None',
-    })
-  }
+  // BR-07: the reporting authority must be an existing, active employee
+  const managerOptions = (employees ?? [])
+    .filter((emp) => emp.employmentStatus === 'ACTIVE')
+    .map((emp) => ({
+      value: emp.id,
+      label: `${emp.firstName} ${emp.lastName} · ${emp.employeeId}`,
+    }))
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    onNext()
-  }
+  const isManagingDirector = formData.role === 'MANAGING_DIRECTOR'
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 text-left">
-      {/* Title & Subtitle */}
-      <div className="space-y-1">
-        <h2 className="text-h2 font-serif font-bold text-primary">Employment</h2>
-        <p className="text-caption text-secondary font-medium">
-          Role, reporting line and work background.
-        </p>
-      </div>
+    <form onSubmit={handleSubmit} noValidate className="space-y-6 text-left">
+      <StepHeader title="Employment" subtitle="Vertical, role, reporting line and probation." />
 
-      {/* SECTION 1: ROLE */}
+      {/* SECTION 1: PLACEMENT (BRD 8.4 #1–5) */}
       <div className="space-y-4 pt-2">
-        <h3 className="text-[11px] font-bold tracking-wider uppercase text-secondary">
-          ROLE
-        </h3>
+        <SectionTitle first>PLACEMENT</SectionTitle>
 
-        {/* Row 1: 3 Column Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Vertical */}
-          <div className="space-y-1.5">
-            <label className="block text-caption font-semibold text-secondary">
-              Vertical <span className="text-error">*</span>
-            </label>
-            <div className="relative">
-              <select
-                value={formData.vertical || 'Sales'}
-                onChange={(e) => updateFormData({ vertical: e.target.value })}
-                className="w-full px-3.5 py-2.5 bg-bg-default border border-border-default rounded-xl text-body-small text-primary outline-none focus:border-border-strong transition-colors appearance-none cursor-pointer pr-9"
-              >
-                <option value="Sales">Sales</option>
-                <option value="CRM">CRM</option>
-                <option value="Accounts">Accounts</option>
-                <option value="Site — Trichy">Site — Trichy</option>
-                <option value="HR">HR</option>
-                <option value="Projects">Projects</option>
-                <option value="Legal">Legal</option>
-              </select>
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-secondary text-caption">
-                ▾
-              </div>
-            </div>
-          </div>
+          <Field label="Vertical" htmlFor="vertical" error={errors.vertical}>
+            <select
+              id="vertical"
+              value={formData.vertical}
+              onChange={(e) => updateFormData({ vertical: e.target.value })}
+              className={inputClass(errors.vertical)}
+            >
+              <option value="" disabled>
+                Select vertical
+              </option>
+              <optgroup label="Business verticals">
+                {BUSINESS_VERTICALS.map((v) => (
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Functional verticals">
+                {FUNCTIONAL_VERTICALS.map((v) => (
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
+          </Field>
 
-          {/* Role */}
-          <div className="space-y-1.5">
-            <label className="block text-caption font-semibold text-secondary">
-              Role <span className="text-error">*</span>
-            </label>
-            <div className="relative">
-              <select
-                value={formData.role || 'EXECUTIVE'}
-                onChange={(e) => updateFormData({ role: e.target.value as EmployeeRoleType })}
-                className="w-full px-3.5 py-2.5 bg-bg-default border border-border-default rounded-xl text-body-small text-primary outline-none focus:border-border-strong transition-colors appearance-none cursor-pointer pr-9"
-              >
-                <option value="EXECUTIVE">Sales executive</option>
-                <option value="VERTICAL_HEAD">Vertical Head</option>
-                <option value="MANAGEMENT_ADMIN">Management Admin</option>
-                <option value="COO">COO</option>
-                <option value="MANAGING_DIRECTOR">Managing Director</option>
-              </select>
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-secondary text-caption">
-                ▾
-              </div>
-            </div>
-          </div>
+          <Field label="Role" htmlFor="role" error={errors.role}>
+            <SelectInput
+              id="role"
+              value={formData.role}
+              onChange={(role) => updateFormData({ role: role as EmployeeRoleType })}
+              placeholder="Select role"
+              options={ROLE_OPTIONS}
+              error={errors.role}
+            />
+          </Field>
 
-          {/* Reports to */}
-          <div className="space-y-1.5">
-            <label className="block text-caption font-semibold text-secondary">
-              Reports to <span className="text-error">*</span>
-            </label>
-            <div className="relative flex items-center">
-              <span className="absolute left-3.5 text-secondary text-caption pointer-events-none">
-                👤
-              </span>
-              <select
-                value={formData.reportingAuthorityId || 'LL-3M8XD'}
-                onChange={(e) => updateFormData({ reportingAuthorityId: e.target.value })}
-                className="w-full pl-9 pr-9 py-2.5 bg-bg-default border border-border-default rounded-xl text-body-small text-primary outline-none focus:border-border-strong transition-colors appearance-none cursor-pointer"
-              >
-                <option value="LL-3M8XD">Arun Kumar - LL-3M8XD</option>
-                <option value="LL-7K2Q9">Karthik Raja - LL-7K2Q9</option>
-                <option value="LL-1A2B3">Meena S - LL-1A2B3</option>
-              </select>
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-secondary text-caption">
-                ▾
-              </div>
-            </div>
-          </div>
-        </div>
+          {!isManagingDirector && (
+            <Field
+              label="Reports to"
+              htmlFor="reportingAuthorityId"
+              error={errors.reportingAuthorityId}
+              hint={employeesFailed ? 'Could not load employees — refresh to try again' : undefined}
+            >
+              <SelectInput
+                id="reportingAuthorityId"
+                value={formData.reportingAuthorityId}
+                onChange={(reportingAuthorityId) => updateFormData({ reportingAuthorityId })}
+                placeholder={isLoadingEmployees ? 'Loading employees…' : 'Select reporting authority'}
+                options={managerOptions}
+                error={errors.reportingAuthorityId}
+              />
+            </Field>
+          )}
 
-        {/* Row 2: 3 Column Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
-          {/* Date of joining */}
-          <div className="space-y-1.5">
-            <label className="block text-caption font-semibold text-secondary">
-              Date of joining <span className="text-error">*</span>
-            </label>
+          <Field label="Joining date" htmlFor="joiningDate" error={errors.joiningDate}>
             <input
+              id="joiningDate"
               type="date"
-              required
-              value={formData.joiningDate || '2026-09-30'}
+              value={formData.joiningDate}
               onChange={(e) => updateFormData({ joiningDate: e.target.value })}
-              className="w-full px-3.5 py-2.5 bg-bg-default border border-border-default rounded-xl text-body-small text-primary outline-none focus:border-border-strong transition-colors"
+              className={inputClass(errors.joiningDate)}
             />
-          </div>
+          </Field>
 
-          {/* Job type */}
-          <div className="space-y-1.5">
-            <label className="block text-caption font-semibold text-secondary">
-              Job type <span className="text-error">*</span>
-            </label>
-            <div className="relative">
-              <select
-                value={formData.jobType || 'PERMANENT'}
-                onChange={(e) => updateFormData({ jobType: e.target.value as JobType })}
-                className="w-full px-3.5 py-2.5 bg-bg-default border border-border-default rounded-xl text-body-small text-primary outline-none focus:border-border-strong transition-colors appearance-none cursor-pointer pr-9"
-              >
-                <option value="PERMANENT">Full-time</option>
-                <option value="TEMPORARY">Part-time</option>
-                <option value="CONTRACT">Contract</option>
-              </select>
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-secondary text-caption">
-                ▾
-              </div>
-            </div>
-          </div>
-
-          {/* Official email */}
-          <div className="space-y-1.5">
-            <label className="block text-caption font-semibold text-secondary">
-              Official email <span className="text-error">*</span>
-            </label>
-            <input
-              type="email"
-              required
-              value={formData.officialEmail || 'priya.r@landsandlands.in'}
-              onChange={(e) => updateFormData({ officialEmail: e.target.value })}
-              placeholder="priya.r@landsandlands.in"
-              className="w-full px-3.5 py-2.5 bg-bg-default border border-border-default rounded-xl text-body-small text-primary placeholder:text-disabled outline-none focus:border-border-strong transition-colors"
+          <Field label="Job type" htmlFor="jobType" error={errors.jobType}>
+            <SelectInput
+              id="jobType"
+              value={formData.jobType}
+              onChange={(jobType) => updateFormData({ jobType: jobType as JobType })}
+              placeholder="Select job type"
+              options={JOB_TYPE_OPTIONS}
+              error={errors.jobType}
             />
-          </div>
-        </div>
-
-        {/* Row 3: Probation Toggle */}
-        <div className="space-y-2 pt-1">
-          <label className="block text-caption font-semibold text-secondary">
-            Probation <span className="text-error">*</span>
-          </label>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => handleProbationToggle(true)}
-              className={`px-5 py-2 rounded-full text-caption font-semibold transition-all cursor-pointer ${
-                hasProbation
-                  ? 'bg-[#18181B] text-white shadow-xs'
-                  : 'bg-white border border-[#D4D4D8] text-secondary hover:text-primary'
-              }`}
-            >
-              Yes
-            </button>
-            <button
-              type="button"
-              onClick={() => handleProbationToggle(false)}
-              className={`px-5 py-2 rounded-full text-caption font-semibold transition-all cursor-pointer ${
-                !hasProbation
-                  ? 'bg-[#18181B] text-white shadow-xs'
-                  : 'bg-white border border-[#D4D4D8] text-secondary hover:text-primary'
-              }`}
-            >
-              No
-            </button>
-          </div>
+          </Field>
         </div>
       </div>
 
-      {/* Form Bottom Action Bar */}
-      <div className="flex items-center justify-between pt-6 border-t border-border-default">
-        <button
-          type="button"
-          onClick={onBack}
-          className="px-5 py-2 bg-white border border-border-default rounded-xl text-caption font-semibold text-primary hover:bg-bg-subtle transition-colors cursor-pointer shadow-xs"
-        >
-          Back
-        </button>
+      {/* SECTION 2: PROBATION (FR-10, BR-10) */}
+      <div className="space-y-4">
+        <SectionTitle>PROBATION</SectionTitle>
 
-        <span className="text-caption text-secondary font-medium hidden sm:inline-block">
-          <span className="text-[#047857]">✓</span> Saved automatically · 10:42 am
-        </span>
+        <Field label="Placed on probation?" error={errors.onProbation}>
+          <ChoicePills
+            options={[
+              { value: 'yes' as const, label: 'Yes' },
+              { value: 'no' as const, label: 'No' },
+            ]}
+            value={formData.onProbation === null ? '' : formData.onProbation ? 'yes' : 'no'}
+            onChange={(value) => updateFormData({ onProbation: value === 'yes' })}
+          />
+        </Field>
 
-        <button
-          type="submit"
-          className="px-6 py-2.5 bg-brand-accent text-primary text-caption font-bold rounded-xl hover:opacity-90 transition-opacity cursor-pointer shadow-xs"
-        >
-          Continue to Financial
-        </button>
+        {formData.onProbation && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Field label="Probation period" htmlFor="probationPeriod" error={errors.probationPeriod}>
+              <input
+                id="probationPeriod"
+                type="text"
+                value={formData.probationPeriod}
+                onChange={(e) => updateFormData({ probationPeriod: e.target.value })}
+                placeholder="e.g. 6 months"
+                className={inputClass(errors.probationPeriod)}
+              />
+            </Field>
+
+            <Field
+              label="Financial agreement during probation"
+              htmlFor="financialAgreement"
+              error={errors.financialAgreement}
+            >
+              <input
+                id="financialAgreement"
+                type="text"
+                value={formData.financialAgreement}
+                onChange={(e) => updateFormData({ financialAgreement: e.target.value })}
+                placeholder="e.g. ₹18,000 / month stipend"
+                className={inputClass(errors.financialAgreement)}
+              />
+            </Field>
+          </div>
+        )}
       </div>
+
+      <StepActions onBack={onBack} nextLabel="Continue to Financial" />
     </form>
   )
 }

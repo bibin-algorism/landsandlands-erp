@@ -1,133 +1,129 @@
-import type { CreateEmployeePayload, CreateEmployeeResponse } from '../../api/types'
+import type { ReactNode } from 'react'
+import type { CreateEmployeeResponse } from '../../api/types'
+import { ROLE_LABELS } from '../../constants/employee'
+import {
+  PREVIOUS_ORG_DOC_LABELS,
+  digitsOnly,
+  formatDate,
+  formatRupees,
+  isDocUploaded,
+  pendingPreviousOrgDoc,
+  requiredDocuments,
+  secondDocDueDate,
+  toRupees,
+  type EmployeeFormData,
+} from './employeeForm'
 
 export interface EmployeeSideCardProps {
   currentStep: number
-  formData: CreateEmployeePayload
+  formData: EmployeeFormData
+  managerName?: string
   createdResponse: CreateEmployeeResponse | null
   isSignInSetUp: boolean
+}
+
+const CARD_CLASS =
+  'lg:col-span-4 bg-[#ffffffc7] backdrop-blur-xs border border-border-default/80 rounded-3xl p-6 space-y-6 shadow-xs sticky top-6'
+
+function Row({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-secondary font-medium shrink-0">{label}</span>
+      <span className="text-primary font-semibold text-right truncate">{children}</span>
+    </div>
+  )
+}
+
+function InfoBox({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="bg-bg-subtle/70 border border-border-default/50 rounded-2xl p-4 space-y-1 text-left">
+      <div className="text-caption font-bold text-primary">{title}</div>
+      <p className="text-[12px] text-secondary leading-snug">{children}</p>
+    </div>
+  )
 }
 
 export default function EmployeeSideCard({
   currentStep,
   formData,
+  managerName,
   createdResponse,
   isSignInSetUp,
 }: EmployeeSideCardProps) {
-  const firstName = formData.firstName || ''
-  const lastName = formData.lastName || ''
-  const fullName = `${firstName} ${lastName}`.trim() || 'New Employee'
-
+  const fullName = `${formData.firstName} ${formData.lastName}`.trim() || 'New employee'
   const initials =
-    firstName && lastName
-      ? `${firstName[0]}${lastName[0]}`.toUpperCase()
-      : firstName
-      ? firstName.slice(0, 2).toUpperCase()
-      : 'PR'
+    fullName === 'New employee'
+      ? '—'
+      : `${formData.firstName[0] ?? ''}${formData.lastName[0] ?? ''}`.toUpperCase()
+
+  const docs = requiredDocuments(formData)
+  const uploadedCount = docs.filter((doc) => isDocUploaded(formData, doc.key)).length
+  const pendingDoc = pendingPreviousOrgDoc(formData)
+  const dueDate = secondDocDueDate(formData)
 
   if (currentStep === 3) {
-    const docFiles = formData.documentFiles || {}
-    const qual = formData.highestQualification || 'UG_DEGREE'
-    const bg = formData.employeeBackground || 'FRESHER'
-
-    const items: Array<{ key: string; label: string; dueDate?: string }> = [
-      { key: 'aadhaarFront', label: 'Aadhaar (front & back)' },
-      { key: 'panFront', label: 'PAN' },
-      { key: 'drivingLicence', label: 'Driving licence' },
-      { key: '10thMarkSheet', label: '10th mark sheet' },
-    ]
-
-    if (qual === 'TWELFTH' || qual === 'UG_DEGREE' || qual === 'PG_DEGREE') {
-      items.push({ key: '12thMarkSheet', label: '12th mark sheet' })
-    }
-    if (qual === 'UG_DEGREE' || qual === 'PG_DEGREE') {
-      items.push({ key: 'degreeCertificate', label: 'Degree certificate' })
-    }
-    if (qual === 'PG_DEGREE') {
-      items.push({ key: 'mastersCertificate', label: "Master's certificate" })
-    }
-
-    if (bg === 'EXPERIENCED') {
-      const target = new Date(
-        (formData.joiningDate ? new Date(formData.joiningDate) : new Date()).getTime() +
-          30 * 24 * 60 * 60 * 1000
-      )
-      const dueStr = `${target.getDate()} ${target.toLocaleString('en-US', { month: 'short' })}`
-      items.push({ key: 'relievingExperience', label: 'Relieving / Experience Letter', dueDate: dueStr })
-      items.push({ key: 'salarySlip', label: 'Salary slip' })
-    } else if (bg === 'FREELANCER' || bg === 'ENTREPRENEUR') {
-      items.push({ key: 'recordOfIncome', label: 'Income proof' })
-    }
-
-    const checklist = items.map((item) => {
-      const doc = docFiles[item.key] || { status: 'missing' }
-      return {
-        key: item.key,
-        label: item.label,
-        status: doc.status,
-        dueDate: item.dueDate,
-      }
-    })
-
-    const uploadedCount = checklist.filter(
-      (i) => i.status === 'uploaded' || i.status === 'verified'
-    ).length
-
     return (
-      <div className="lg:col-span-4 bg-[#ffffffc7] backdrop-blur-xs border border-border-default/80 rounded-3xl p-6 space-y-6 shadow-xs sticky top-6">
+      <div className={CARD_CLASS}>
         <h3 className="text-h3 font-serif font-bold text-primary">Document checklist</h3>
 
-        <div className="flex items-center justify-between text-caption font-semibold border-b border-border-default/60 pb-3">
-          <span className="text-secondary">
-            {uploadedCount} of {checklist.length} uploaded
-          </span>
+        <div className="text-caption font-semibold text-secondary border-b border-border-default/60 pb-3">
+          {uploadedCount} of {docs.length} uploaded
         </div>
 
         <div className="space-y-3 text-caption">
-          {checklist.map((item, idx) => (
-            <div key={idx} className="flex items-center justify-between">
-              <span className="flex items-center gap-2 text-primary font-medium">
+          {docs.map((doc) => {
+            const state = formData.documents[doc.key]
+            const uploaded = isDocUploaded(formData, doc.key)
+            return (
+              <div key={doc.key} className="flex items-center justify-between">
+                <span className="flex items-center gap-2 text-primary font-medium">
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      uploaded ? 'bg-[#047857]' : state?.status === 'uploading' ? 'bg-[#F59E0B]' : 'bg-[#B42318]'
+                    }`}
+                  />
+                  {doc.label}
+                </span>
                 <span
-                  className={`w-1.5 h-1.5 rounded-full ${
-                    item.status === 'uploaded' || item.status === 'verified'
-                      ? 'bg-[#047857]'
-                      : item.status === 'uploading'
-                      ? 'bg-[#F59E0B]'
-                      : 'bg-[#B42318]'
+                  className={`font-semibold ${
+                    uploaded ? 'text-[#047857]' : state?.status === 'uploading' ? 'text-[#F59E0B]' : 'text-[#B42318]'
                   }`}
-                />
-                {item.label}
+                >
+                  {uploaded ? 'uploaded' : state?.status === 'uploading' ? 'uploading…' : 'missing'}
+                </span>
+              </div>
+            )
+          })}
+          {pendingDoc && (
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-2 text-primary font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#F59E0B]" />
+                {PREVIOUS_ORG_DOC_LABELS[pendingDoc]}
               </span>
-              {item.status === 'uploaded' || item.status === 'verified' ? (
-                <span className="font-semibold text-[#047857]">uploaded</span>
-              ) : item.status === 'uploading' ? (
-                <span className="font-semibold text-[#F59E0B]">uploading...</span>
-              ) : item.dueDate ? (
-                <span className="font-semibold text-[#B42318]">Due {item.dueDate}</span>
-              ) : (
-                <span className="font-semibold text-[#B42318]">missing</span>
-              )}
+              <span className="font-semibold text-[#B45309]">
+                {dueDate ? `due ${formatDate(dueDate)}` : 'due later'}
+              </span>
             </div>
-          ))}
+          )}
         </div>
 
-        <div className="bg-bg-subtle/70 border border-border-default/50 rounded-2xl p-4 space-y-1 text-left">
-          <div className="text-caption font-bold text-primary">Can't collect everything today?</div>
-          <p className="text-[12px] text-secondary leading-snug">
-            Previous-employer documents can come later — they get a due date. Everything else is needed on the joining day.
-          </p>
-        </div>
+        <InfoBox title="Can't collect everything today?">
+          Only a previous-employer document can come later — it gets a due date 2 weeks to 1 month after
+          joining. Everything else is needed on the joining day.
+        </InfoBox>
       </div>
     )
   }
 
+  const total = toRupees(formData.takeHomePayTotal)
+  const cash = toRupees(formData.cashComponent)
+
   return (
-    <div className="lg:col-span-4 bg-[#ffffffc7] backdrop-blur-xs border border-border-default/80 rounded-3xl p-6 space-y-6 shadow-xs sticky top-6">
-      {/* Card Header */}
+    <div className={CARD_CLASS}>
       <h3 className="text-h3 font-serif font-bold text-primary">
         {currentStep === 7 ? 'Done' : 'New employee'}
       </h3>
 
-      {/* Avatar + Subtitle */}
       <div className="flex items-center gap-3.5">
         <div className="w-10 h-10 rounded-full bg-[#FFEDD5] text-[#C2410C] font-bold text-caption flex items-center justify-center shadow-xs shrink-0">
           {initials}
@@ -135,9 +131,10 @@ export default function EmployeeSideCard({
         <div>
           <div className="text-body-small font-bold text-primary">{fullName}</div>
           <div className="text-[12px] text-secondary font-medium">
-            {currentStep === 7 ? (
+            {createdResponse ? (
               <>
-                <span className="font-bold">{createdResponse?.employeeId || 'LL-7K2Q9'}</span> · Incomplete
+                <span className="font-bold">{createdResponse.employeeId}</span> ·{' '}
+                {createdResponse.isIncomplete ? 'Incomplete' : 'Active'}
               </>
             ) : (
               'ID is created when you finish'
@@ -146,319 +143,101 @@ export default function EmployeeSideCard({
         </div>
       </div>
 
-      {/* Key Value Table */}
       <div className="space-y-3 pt-2 text-caption border-t border-border-default/60">
-        <div className="flex items-center justify-between">
-          <span className="text-secondary font-medium">Name</span>
-          <span className="text-primary font-semibold">{fullName}</span>
-        </div>
-
-        {currentStep === 1 ? (
+        {currentStep === 1 && (
           <>
-            <div className="flex items-center justify-between">
-              <span className="text-secondary font-medium">Date of birth</span>
-              <span className="text-primary font-semibold">{formData.dateOfBirth || '—'}</span>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-secondary font-medium">Aadhaar</span>
-              <span className="text-[#047857] font-semibold flex items-center gap-1">
-                {formData.aadhaarNumber ? 'No duplicate ✓' : 'Pending'}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-secondary font-medium">PAN</span>
-              <span className="text-primary font-semibold">{formData.panNumber || '—'}</span>
-            </div>
+            <Row label="Date of birth">{formatDate(formData.dateOfBirth)}</Row>
+            <Row label="Aadhaar">
+              {formData.aadhaarNumber ? `••••${digitsOnly(formData.aadhaarNumber).slice(-4)}` : '—'}
+            </Row>
+            <Row label="Driving licence">{formData.drivingLicenceNumber || '—'}</Row>
           </>
-        ) : currentStep === 2 ? (
+        )}
+        {currentStep === 2 && (
           <>
-            <div className="flex items-center justify-between">
-              <span className="text-secondary font-medium">Personal phone</span>
-              <span className="text-primary font-semibold">{formData.personalPhone || '—'}</span>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-secondary font-medium">Current city</span>
-              <span className="text-primary font-semibold">
-                {formData.currentAddress
-                  ? formData.currentAddress.split(',').pop()?.trim() || '—'
-                  : '—'}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-secondary font-medium">Emergency contact</span>
-              <span className="text-primary font-semibold">
-                {formData.emergencyContacts && formData.emergencyContacts[0]
-                  ? `${formData.emergencyContacts[0].name} (${formData.emergencyContacts[0].relationship})`
-                  : 'None added'}
-              </span>
-            </div>
+            <Row label="Personal phone">{formData.personalPhone || '—'}</Row>
+            <Row label="Official email">{formData.officialEmail || '—'}</Row>
+            <Row label="Emergency contact">
+              {formData.emergencyContacts[0]?.name
+                ? `${formData.emergencyContacts[0].name} (${formData.emergencyContacts[0].relationship || '—'})`
+                : '—'}
+            </Row>
           </>
-        ) : currentStep === 4 ? (
+        )}
+        {currentStep === 4 && (
           <>
-            <div className="flex items-center justify-between">
-              <span className="text-secondary font-medium">Role</span>
-              <span className="text-primary font-semibold">
-                {formData.role === 'EXECUTIVE'
-                  ? 'Sales executive'
-                  : formData.role === 'VERTICAL_HEAD'
-                  ? 'Vertical Head'
-                  : formData.role || '—'}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-secondary font-medium">Vertical</span>
-              <span className="text-primary font-semibold">{formData.vertical || '—'}</span>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-secondary font-medium">Reports to</span>
-              <span className="text-primary font-semibold">
-                {formData.reportingAuthorityId || '—'}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-secondary font-medium">Joining date</span>
-              <span className="text-primary font-semibold">
-                {formData.joiningDate
-                  ? (() => {
-                      try {
-                        const d = new Date(formData.joiningDate)
-                        return isNaN(d.getTime())
-                          ? formData.joiningDate
-                          : `${d.getDate()} ${d.toLocaleString('en-US', { month: 'short' })} ${d.getFullYear()}`
-                      } catch {
-                        return formData.joiningDate
-                      }
-                    })()
-                  : '—'}
-              </span>
-            </div>
+            <Row label="Role">{formData.role ? ROLE_LABELS[formData.role] : '—'}</Row>
+            <Row label="Vertical">{formData.vertical || '—'}</Row>
+            <Row label="Reports to">
+              {formData.role === 'MANAGING_DIRECTOR' ? 'No one (MD)' : managerName || '—'}
+            </Row>
+            <Row label="Joining date">{formatDate(formData.joiningDate)}</Row>
           </>
-        ) : currentStep === 5 ? (
+        )}
+        {currentStep === 5 && (
           <>
-            <div className="flex items-center justify-between">
-              <span className="text-secondary font-medium">Take-home pay</span>
-              <span className="text-primary font-bold">
-                {formData.takeHomePayTotal
-                  ? `₹${formData.takeHomePayTotal.toLocaleString('en-IN')} / mo`
-                  : '—'}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-secondary font-medium">Paid via</span>
-              <span className="text-primary font-semibold">
-                {!formData.cashComponent || formData.cashComponent === 0
-                  ? '100% Bank transfer'
-                  : formData.cashComponent === formData.takeHomePayTotal
-                  ? '100% Cash'
-                  : 'Split (Bank + Cash)'}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-secondary font-medium">Bank account</span>
-              <span className="text-primary font-semibold">
-                {formData.accountNumber
-                  ? `${formData.ifscCode?.toUpperCase().startsWith('HDFC') ? 'HDFC' : 'Bank'} ****${formData.accountNumber.slice(-4)}`
-                  : '—'}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-secondary font-medium">Probation ends</span>
-              <span className="text-primary font-semibold">
-                {(() => {
-                  const months = parseInt(formData.probationPeriod || '6', 10) || 6
-                  const start = formData.joiningDate ? new Date(formData.joiningDate) : new Date()
-                  const target = new Date(start)
-                  target.setMonth(target.getMonth() + months)
-                  return `${target.getDate()} ${target.toLocaleString('en-US', { month: 'short' })} ${target.getFullYear()}`
-                })()}
-              </span>
-            </div>
+            <Row label="Take-home pay">{Number.isInteger(total) ? `${formatRupees(total)} / mo` : '—'}</Row>
+            <Row label="Paid via">
+              {!Number.isInteger(total) || !Number.isInteger(cash)
+                ? '—'
+                : cash === 0
+                  ? 'Bank transfer'
+                  : cash === total
+                    ? 'Cash'
+                    : 'Bank + cash'}
+            </Row>
+            <Row label="IFSC">{formData.ifscCode || '—'}</Row>
           </>
-        ) : currentStep === 6 ? (
+        )}
+        {(currentStep === 6 || currentStep === 7) && (
           <>
-            <div className="flex items-center justify-between">
-              <span className="text-secondary font-medium">Employee ID</span>
-              <span className="text-primary font-semibold">Created on finish</span>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-secondary font-medium">Status after create</span>
-              <span className="text-primary font-semibold">
-                {(() => {
-                  const docFiles = formData.documentFiles || {}
-                  const qual = formData.highestQualification || 'UG_DEGREE'
-                  const bg = formData.employeeBackground || 'FRESHER'
-                  const items = ['aadhaarFront', 'panFront', 'drivingLicence', '10thMarkSheet']
-                  if (qual === 'TWELFTH' || qual === 'UG_DEGREE' || qual === 'PG_DEGREE') items.push('12thMarkSheet')
-                  if (qual === 'UG_DEGREE' || qual === 'PG_DEGREE') items.push('degreeCertificate')
-                  if (qual === 'PG_DEGREE') items.push('mastersCertificate')
-                  if (bg === 'EXPERIENCED') items.push('relievingExperience', 'salarySlip')
-                  else if (bg === 'FREELANCER' || bg === 'ENTREPRENEUR') items.push('recordOfIncome')
-
-                  const missing = items.filter(
-                    (k) => docFiles[k]?.status !== 'uploaded' && docFiles[k]?.status !== 'verified'
-                  ).length
-                  return missing > 0 ? 'Incomplete' : 'Active'
-                })()}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-secondary font-medium">Documents</span>
-              <span className="text-primary font-semibold">
-                {(() => {
-                  const docFiles = formData.documentFiles || {}
-                  const qual = formData.highestQualification || 'UG_DEGREE'
-                  const bg = formData.employeeBackground || 'FRESHER'
-                  const items = ['aadhaarFront', 'panFront', 'drivingLicence', '10thMarkSheet']
-                  if (qual === 'TWELFTH' || qual === 'UG_DEGREE' || qual === 'PG_DEGREE') items.push('12thMarkSheet')
-                  if (qual === 'UG_DEGREE' || qual === 'PG_DEGREE') items.push('degreeCertificate')
-                  if (qual === 'PG_DEGREE') items.push('mastersCertificate')
-                  if (bg === 'EXPERIENCED') items.push('relievingExperience', 'salarySlip')
-                  else if (bg === 'FREELANCER' || bg === 'ENTREPRENEUR') items.push('recordOfIncome')
-
-                  const uploaded = items.filter(
-                    (k) => docFiles[k]?.status === 'uploaded' || docFiles[k]?.status === 'verified'
-                  ).length
-                  return `${uploaded} of ${items.length}`
-                })()}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-secondary font-medium">Sign-in</span>
-              <span className="text-primary font-semibold">Set up next</span>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-secondary font-medium">Documents due</span>
-              <span className="text-primary font-semibold">
-                {(() => {
-                  const start = formData.joiningDate ? new Date(formData.joiningDate) : new Date()
-                  const target = new Date(start)
-                  target.setDate(target.getDate() + 30)
-                  return `${target.getDate()} ${target.toLocaleString('en-US', { month: 'short' })} ${target.getFullYear()}`
-                })()}
-              </span>
-            </div>
-          </>
-        ) : currentStep === 7 ? (
-          <>
-            <div className="flex items-center justify-between">
-              <span className="text-secondary font-medium">Employee ID</span>
-              <span className="text-primary font-semibold">{createdResponse?.employeeId || 'LL-7K2Q9'}</span>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-secondary font-medium">Status</span>
-              <span className="text-primary font-semibold">
-                {(() => {
-                  const docFiles = formData.documentFiles || {}
-                  const qual = formData.highestQualification || 'UG_DEGREE'
-                  const bg = formData.employeeBackground || 'FRESHER'
-                  const items = ['aadhaarFront', 'panFront', 'drivingLicence', '10thMarkSheet']
-                  if (qual === 'TWELFTH' || qual === 'UG_DEGREE' || qual === 'PG_DEGREE') items.push('12thMarkSheet')
-                  if (qual === 'UG_DEGREE' || qual === 'PG_DEGREE') items.push('degreeCertificate')
-                  if (qual === 'PG_DEGREE') items.push('mastersCertificate')
-                  if (bg === 'EXPERIENCED') items.push('relievingExperience', 'salarySlip')
-                  else if (bg === 'FREELANCER' || bg === 'ENTREPRENEUR') items.push('recordOfIncome')
-
-                  const missing = items.filter(
-                    (k) => docFiles[k]?.status !== 'uploaded' && docFiles[k]?.status !== 'verified'
-                  ).length
-                  return missing > 0 ? 'Incomplete' : 'Active'
-                })()}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-secondary font-medium">Documents</span>
-              <span className="text-primary font-semibold">
-                {(() => {
-                  const docFiles = formData.documentFiles || {}
-                  const qual = formData.highestQualification || 'UG_DEGREE'
-                  const bg = formData.employeeBackground || 'FRESHER'
-                  const items = ['aadhaarFront', 'panFront', 'drivingLicence', '10thMarkSheet']
-                  if (qual === 'TWELFTH' || qual === 'UG_DEGREE' || qual === 'PG_DEGREE') items.push('12thMarkSheet')
-                  if (qual === 'UG_DEGREE' || qual === 'PG_DEGREE') items.push('degreeCertificate')
-                  if (qual === 'PG_DEGREE') items.push('mastersCertificate')
-                  if (bg === 'EXPERIENCED') items.push('relievingExperience', 'salarySlip')
-                  else if (bg === 'FREELANCER' || bg === 'ENTREPRENEUR') items.push('recordOfIncome')
-
-                  const uploaded = items.filter(
-                    (k) => docFiles[k]?.status === 'uploaded' || docFiles[k]?.status === 'verified'
-                  ).length
-                  return `${uploaded} of ${items.length}`
-                })()}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-secondary font-medium">Sign-in</span>
-              <span className={isSignInSetUp ? 'text-[#047857] font-semibold' : 'text-primary font-semibold'}>
-                {isSignInSetUp ? 'Credentials generated ✓' : 'Not set up yet'}
-              </span>
-            </div>
-          </>
-        ) : null}
-      </div>
-
-      {/* Bottom Info Box */}
-      <div className="bg-bg-subtle/70 border border-border-default/50 rounded-2xl p-4 space-y-1 text-left">
-        {currentStep === 1 ? (
-          <>
-            <div className="text-caption font-bold text-primary">Have these ready</div>
-            <p className="text-[12px] text-secondary leading-snug">
-              Original Aadhaar, PAN and a photo of the employee. Documents are photographed in Step 3.
-            </p>
-          </>
-        ) : currentStep === 2 ? (
-          <>
-            <div className="text-caption font-bold text-primary">Official phone & email</div>
-            <p className="text-[12px] text-secondary leading-snug">
-              Official credentials are set in Step 4 once the business vertical & role are defined.
-            </p>
-          </>
-        ) : currentStep === 4 ? (
-          <>
-            <div className="text-caption font-bold text-primary">Reporting line matters</div>
-            <p className="text-[12px] text-secondary leading-snug">
-              {formData.reportingAuthorityId === 'LL-7K2Q9' ? 'Karthik' : 'Arun'} will see {formData.firstName || 'Priya'} in "My team". Restricted details stay hidden from him.
-            </p>
-          </>
-        ) : currentStep === 5 ? (
-          <>
-            <div className="text-caption font-bold text-primary">Private information</div>
-            <p className="text-[12px] text-secondary leading-snug">
-              Pay and bank details are restricted. Vertical heads and colleagues never see them.
-            </p>
-          </>
-        ) : currentStep === 7 ? (
-          <>
-            <div className="text-caption font-bold text-primary">Recorded</div>
-            <p className="text-[12px] text-secondary leading-snug">
-              Created by Deepa N on 30 Sep 2026, 11:05 am. Saved to the Audit & Edit Trail.
-            </p>
-          </>
-        ) : (
-          <>
-            <div className="text-caption font-bold text-primary">What happens next</div>
-            <p className="text-[12px] text-secondary leading-snug">
-              An Employee ID (LL-XXXXX) is generated and can't be changed. Then you can set up {formData.firstName || 'Priya'}'s sign-in.
-            </p>
+            <Row label="Documents">
+              {uploadedCount} of {docs.length}
+            </Row>
+            <Row label="Status">
+              {createdResponse
+                ? createdResponse.isIncomplete
+                  ? 'Incomplete'
+                  : 'Active'
+                : pendingDoc
+                  ? 'Incomplete'
+                  : 'Active'}
+            </Row>
+            {pendingDoc && <Row label="Document due">{formatDate(dueDate)}</Row>}
+            <Row label="Sign-in">
+              {currentStep === 6 ? 'Set up after create' : isSignInSetUp ? 'Credentials shared ✓' : 'Not set up yet'}
+            </Row>
           </>
         )}
       </div>
+
+      {currentStep === 1 && (
+        <InfoBox title="Have these ready">
+          Original Aadhaar and driving licence, education certificates and previous-employer documents. Each
+          one is photographed in Documents.
+        </InfoBox>
+      )}
+      {currentStep === 2 && (
+        <InfoBox title="Emergency contacts">At least one and up to three contacts are required.</InfoBox>
+      )}
+      {currentStep === 4 && (
+        <InfoBox title="Reporting line matters">
+          The reporting authority sees this employee in their team. Restricted details stay hidden from them.
+        </InfoBox>
+      )}
+      {currentStep === 5 && (
+        <InfoBox title="Restricted information">
+          Pay and bank details are visible only to HR, the MD, the COO and the employee.
+        </InfoBox>
+      )}
+      {currentStep === 6 && (
+        <InfoBox title="What happens next">
+          An Employee ID (LL-XXXXX) is generated and can never be changed. Then you can share the sign-in.
+        </InfoBox>
+      )}
+      {currentStep === 7 && (
+        <InfoBox title="Recorded">Onboarding is saved to the Audit & Edit Trail.</InfoBox>
+      )}
     </div>
   )
 }

@@ -1,0 +1,15 @@
+meta {
+  name: Get Employee Document
+  type: http
+  seq: 23
+}
+
+get {
+  url: {{baseUrl}}/api/v1/employees/{{employeeId}}/documents/aadhaar-front
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

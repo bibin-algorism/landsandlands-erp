@@ -1,0 +1,15 @@
+meta {
+  name: My Change Requests
+  type: http
+  seq: 15
+}
+
+get {
+  url: {{baseUrl}}/api/v1/employees/me/change-requests
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

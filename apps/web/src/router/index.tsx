@@ -6,6 +6,11 @@ import Dashboard from '../pages/Dashboard'
 import EmployeesPage from '../pages/employees/EmployeesPage'
 import AddEmployeePage from '../pages/employees/AddEmployeePage'
 import EmployeeDetailsPage from '../pages/employees/EmployeeDetailsPage'
+import EmployeeEditPage from '../pages/employees/EmployeeEditPage'
+import RequestChangePage from '../pages/employees/change-requests/RequestChangePage'
+import MyChangeRequestsPage from '../pages/employees/change-requests/MyChangeRequestsPage'
+import ChangeRequestQueuePage from '../pages/employees/change-requests/ChangeRequestQueuePage'
+import ChangeRequestDetailPage from '../pages/employees/change-requests/ChangeRequestDetailPage'
 import ClientsPage from '../pages/clients/ClientsPage'
 import AddClientPage from '../pages/clients/AddClientPage'
 import ClientDetailsPage from '../pages/clients/ClientDetailsPage'
@@ -31,6 +36,30 @@ export default function AppRouter() {
         {/* Protected Base Routes */}
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<Dashboard />} />
+          {/* Own record and change requests (FR-11, FR-16) */}
+          <Route path="/my-profile" element={<EmployeeDetailsPage self />} />
+          <Route path="/my-profile/change-requests" element={<MyChangeRequestsPage />} />
+          <Route path="/my-profile/change-requests/new" element={<RequestChangePage />} />
+        </Route>
+
+        {/* Employee directory: the API scopes results (Vertical Heads see their team) */}
+        <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'HR_ADMIN', 'VERTICAL_HEAD']} />}>
+          <Route path="/employees" element={<EmployeesPage />} />
+          <Route path="/people/employees" element={<EmployeesPage />} />
+          <Route path="/employees/:employeeId" element={<EmployeeDetailsPage />} />
+          <Route path="/people/employees/:employeeId" element={<EmployeeDetailsPage />} />
+        </Route>
+
+        {/* HR only: onboarding and direct edit (FR-01, FR-24) */}
+        <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'HR_ADMIN']} />}>
+          <Route path="/employees/new" element={<AddEmployeePage />} />
+          <Route path="/employees/:employeeId/edit" element={<EmployeeEditPage />} />
+        </Route>
+
+        {/* Change-request review: HR, and the MD for HR's own records (FR-18) */}
+        <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'HR_ADMIN']} />}>
+          <Route path="/employees/change-requests" element={<ChangeRequestQueuePage />} />
+          <Route path="/employees/change-requests/:id" element={<ChangeRequestDetailPage />} />
         </Route>
 
         {/* Admin Restricted Routes */}
@@ -41,12 +70,6 @@ export default function AppRouter() {
             />
           }
         >
-          <Route path="/employees" element={<EmployeesPage />} />
-          <Route path="/people/employees" element={<EmployeesPage />} />
-          <Route path="/employees/new" element={<AddEmployeePage />} />
-          <Route path="/employees/:employeeId" element={<EmployeeDetailsPage />} />
-          <Route path="/people/employees/:employeeId" element={<EmployeeDetailsPage />} />
-
           {/* Client / Customer Routes */}
           <Route path="/clients" element={<ClientsPage />} />
           <Route path="/people/clients" element={<ClientsPage />} />

@@ -1,12 +1,13 @@
 export interface ApiResponse<T = unknown> {
   success?: boolean
   data?: T
-  message?: string
+  /** NestJS validation errors arrive as a list of messages. */
+  message?: string | string[]
   error?: string
   statusCode?: number
 }
 
-export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'HR_ADMIN' | 'EMPLOYEE'
+export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'HR_ADMIN' | 'VERTICAL_HEAD' | 'EMPLOYEE'
 
 export interface UserProfile {
   id: string
@@ -155,12 +156,16 @@ export interface EmployeeListItem {
   jobType?: string
   employmentStatus: EmploymentStatus
   onboardingStatus?: 'Active' | 'Incomplete' | 'Terminated'
+  /** A previous-organisation document is still due (FR-07). */
+  isIncomplete?: boolean
+  secondDocDueDate?: string | null
   communicationDetail?: CommunicationDetailSummary
   employmentDetail?: EmploymentDetailSummary
 }
 
+/** Request body for POST /employees (mirrors CreateEmployeeDto). Document fields hold storage keys. */
 export interface CreateEmployeePayload {
-  // Step 1: Personal
+  // 8.1 Personal Identity
   firstName: string
   lastName: string
   dateOfBirth: string
@@ -169,9 +174,9 @@ export interface CreateEmployeePayload {
   maritalStatus: string
   fatherName: string
 
-  // Step 2: Communication
+  // 8.2 Communication Details
   personalPhone: string
-  secondaryPhone?: string
+  secondaryPhone: string
   officialPhone: string
   personalEmail: string
   officialEmail: string
@@ -179,56 +184,250 @@ export interface CreateEmployeePayload {
   permanentAddress: string
   emergencyContacts: EmergencyContactInput[]
 
-  // Step 3: Document & Background
+  // 8.3 Documentation
   aadhaarNumber: string
-  aadhaarFrontUrl?: string
-  aadhaarBackUrl?: string
-  panNumber?: string
-  panFrontUrl?: string
+  aadhaarFrontUrl: string
+  aadhaarBackUrl: string
   drivingLicenceNumber: string
-  drivingLicenceFrontUrl?: string
-  drivingLicenceBackUrl?: string
-  highestQualification?: QualificationLevel | ''
-  previousOrgDocStatus?: PreviousOrgDocStatus | ''
+  drivingLicenceFrontUrl: string
+  drivingLicenceBackUrl: string
+  highestQualification: QualificationLevel
+  educationalDocuments: { qualificationLevel: QualificationLevel; frontImageUrl: string; backImageUrl: string }[]
+  employeeBackground: EmployeeBackground
+  previousOrgDocStatus?: Exclude<PreviousOrgDocStatus, 'NONE'>
   relievingExperienceUrl?: string
   salarySlipUrl?: string
   secondDocDueDate?: string
-  employeeBackground?: EmployeeBackground | ''
   recordOfIncomeUrl?: string
-  documentFiles?: Record<string, { status: 'missing' | 'uploading' | 'uploaded' | 'verified'; fileName?: string; progress?: number }>
 
-  // Step 4: Employment & Probation
+  // 8.4 Employment Details
   vertical: string
-  role?: EmployeeRoleType | ''
-  jobType?: JobType | ''
+  role: EmployeeRoleType
+  jobType: JobType
   joiningDate: string
   reportingAuthorityId?: string
-  probationPeriod: string
-  financialAgreement: string
+  onProbation: boolean
+  probationPeriod?: string
+  financialAgreement?: string
 
-  // Step 5: Financial
+  // 8.5 Financial Details (whole rupees)
   accountNumber: string
   accountHolderName: string
   ifscCode: string
   branchName: string
   takeHomePayTotal: number
-  cashComponent?: number
-  bankComponent?: number
+  bankComponent: number
+  cashComponent: number
   nextAppraisalWindow: string
-
-  // Initial Password setup
-  initialPassword?: string
 }
 
 export interface CreateEmployeeResponse {
   id: string
   employeeId: string
-  userId: string
   firstName: string
   lastName: string
-  temporaryPassword?: string
-  initialPassword?: string
-  message?: string
+  isIncomplete: boolean
+  secondDocDueDate: string | null
+  /** Shown once; the employee must change it at first login. */
+  temporaryPassword: string
+}
+
+export interface UploadedFileResponse {
+  key: string
+  fileName: string
+  size: number
+}
+
+// ==========================================
+// EMPLOYEE DETAIL, EDIT & CHANGE REQUESTS
+// ==========================================
+
+export interface PersonRef {
+  id: string
+  employeeId: string
+  firstName: string
+  lastName: string
+}
+
+export interface EmployeeDocumentRef {
+  document: string
+  label: string
+  restricted: boolean
+}
+
+/** GET /employees/:id — restricted sections are null when the viewer may not see them. */
+export interface EmployeeView {
+  id: string
+  employeeId: string
+  firstName: string
+  lastName: string
+  employmentStatus: EmploymentStatus
+  isIncomplete: boolean
+  personal: {
+    dateOfBirth: string | null
+    gender: string
+    bloodGroup: string
+    maritalStatus: string
+    fatherName: string
+  } | null
+  communication: {
+    personalPhone: string
+    secondaryPhone: string | null
+    officialPhone: string
+    personalEmail: string
+    officialEmail: string
+    currentAddress: string
+    permanentAddress: string
+    emergencyContacts: { name: string; relationship: string; phone: string; isPrimary: boolean }[]
+  } | null
+  documentation: {
+    aadhaarNumber: string | null
+    drivingLicenceNumber: string | null
+    highestQualification: QualificationLevel
+    employeeBackground: EmployeeBackground | null
+    previousOrgDocStatus: PreviousOrgDocStatus | null
+    secondDocDueDate: string | null
+    isIncomplete: boolean
+    documents: EmployeeDocumentRef[]
+  } | null
+  employment: {
+    vertical: string
+    role: EmployeeRoleType
+    jobType: JobType
+    joiningDate: string | null
+    reportingAuthority: PersonRef | null
+    exitDate: string | null
+    exitReason: string | null
+    probation: { probationPeriod: string; financialAgreement: string } | null
+    transferHistory: { fromVertical: string; toVertical: string; transferredAt: string }[]
+    promotionHistory: { fromRole: EmployeeRoleType; toRole: EmployeeRoleType; promotedAt: string }[]
+  } | null
+  financial: {
+    accountHolderName: string
+    accountNumber: string
+    ifscCode: string
+    branchName: string
+    takeHomePayTotal: number | null
+    bankComponent: number | null
+    cashComponent: number | null
+    nextAppraisalWindow: string | null
+    payRevisions: { previousPay: number; newPay: number; effectiveDate: string | null }[]
+    appraisals: { appraisalWindow: string; outcome: string; reviewedAt: string }[]
+  } | null
+  system: {
+    createdAt: string
+    createdBy: PersonRef | null
+    onboardingCompletedAt: string | null
+    updatedAt: string
+    lastUpdatedBy: PersonRef | null
+    statusChangedOn: string | null
+  }
+  access: {
+    level: 'FULL' | 'TEAM'
+    restrictedVisible: boolean
+    canEdit: boolean
+    canRequestChange: boolean
+  }
+}
+
+export type FieldGroup = 'PERSONAL' | 'COMMUNICATION' | 'DOCUMENTATION' | 'EMPLOYMENT' | 'FINANCIAL'
+export type FieldType =
+  | 'text'
+  | 'longText'
+  | 'phone'
+  | 'email'
+  | 'date'
+  | 'select'
+  | 'aadhaar'
+  | 'licence'
+  | 'accountNumber'
+  | 'ifsc'
+  | 'employeeRef'
+  | 'contacts'
+  | 'documentPair'
+  | 'education'
+  | 'probation'
+  | 'pay'
+  | 'appraisal'
+
+export interface FieldMeta {
+  key: string
+  label: string
+  group: FieldGroup
+  type: FieldType
+  options: { value: string; label: string }[] | null
+  requiresProof: boolean
+}
+
+export interface EditableField extends FieldMeta {
+  sensitivity: 'INTERNAL' | 'CONFIDENTIAL' | 'RESTRICTED'
+  value: unknown
+  hasOpenRequest: boolean
+}
+
+/** GET /employees/:id/editable-fields */
+export interface EditableFieldsResponse {
+  mode: 'DIRECT_EDIT' | 'CHANGE_REQUEST'
+  employee: PersonRef
+  updatedAt: string
+  fields: EditableField[]
+}
+
+export interface DirectEditPayload {
+  changes: Record<string, unknown>
+  reason?: string
+  expectedUpdatedAt: string
+}
+
+export interface HistoryEntry {
+  id: string
+  occurredAt: string
+  action: string
+  actor: { employeeId: string; name: string } | null
+  reason: string | null
+  changes: { field: string; label: string; old: unknown; new: unknown }[]
+  changeSource: 'DIRECT_HR_EDIT' | 'APPROVED_CHANGE_REQUEST' | null
+  changeRequestId: string | null
+  document: string | null
+}
+
+export type ChangeRequestStatus = 'PENDING_REVIEW' | 'QUERY_SENT' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
+
+export interface ChangeRequestField {
+  fieldKey: string
+  label: string
+  group: FieldGroup | null
+  type: FieldType | null
+  options: { value: string; label: string }[] | null
+  requiresProof: boolean
+  currentValue: unknown
+  proposedValue: unknown
+  proofFileKey: string | null
+  isQueried: boolean
+  /** Detail only: the value now, and whether it changed since the request was raised. */
+  liveValue?: unknown
+  isStale?: boolean
+}
+
+export interface ChangeRequest {
+  id: string
+  status: ChangeRequestStatus
+  routedTo: 'HR' | 'MD'
+  employee: PersonRef
+  submittedAt: string
+  reviewDueDate: string
+  employeeReplyDueDate: string | null
+  queryReason: string | null
+  rejectionReason: string | null
+  resolvedAt: string | null
+  isOverdue: boolean
+  fields: ChangeRequestField[]
+}
+
+export interface ChangeRequestFieldInput {
+  fieldKey: string
+  proposedValue: unknown
+  proofFileKey?: string
 }
 
 // Client Types & Payloads

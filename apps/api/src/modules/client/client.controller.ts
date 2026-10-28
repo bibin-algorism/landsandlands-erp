@@ -90,7 +90,7 @@ export class ClientController {
     @Body('primaryRMId') primaryRMId: string,
     @Req() req: any,
   ) {
-    this.extractUserFromReq(req);
-    return this.clientService.assignPrimaryRM(id, primaryRMId);
+    const user = this.extractUserFromReq(req);
+    return this.clientService.assignPrimaryRM(id, primaryRMId, user.sub || user.userId);
   }
 }

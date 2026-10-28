@@ -43,26 +43,51 @@ Start PostgreSQL database in background:
 docker compose up -d
 ```
 
-### 2. Database Setup & Migrations
-
-Execute database migrations and generate Prisma client:
+### 2. Database Setup (new machine)
 
 ```bash
-# Generate new migration & apply in local dev
-pnpm db:migrate --name init
-
-# Apply pending migrations in production (CI/CD pipeline)
-pnpm db:deploy
-
-# Push schema directly to database (prototype/development)
-pnpm db:push
-
-# Generate Prisma Client TypeScript types
-pnpm db:generate
-
-# Seed database with initial users (Super Admin, Mock Employee, Mock Client)
-pnpm db:seed
+pnpm install
+cp apps/api/.env.example apps/api/.env   # first time only
+pnpm db:setup
 ```
+
+`pnpm db:setup` applies every migration, generates the Prisma client and seeds the demo accounts below. It is safe to run again: applied migrations are skipped and the seed uses upserts.
+
+### 3. Changing the Database Schema
+
+Every schema change ships as a migration file, so all machines and environments stay identical.
+
+1. Edit `apps/api/prisma/schema.prisma`.
+2. Create and apply the migration (also regenerates the Prisma client):
+
+   ```bash
+   pnpm db:migrate --name add_mother_name
+   ```
+
+3. Review the generated `apps/api/prisma/migrations/<timestamp>_add_mother_name/migration.sql`, then commit it together with `schema.prisma`.
+
+Teammates pick up your change with `pnpm db:deploy && pnpm db:generate` (or `pnpm db:setup`).
+
+| Command | What it does |
+| :--- | :--- |
+| `pnpm db:setup` | Fresh or existing DB: apply migrations, generate client, seed |
+| `pnpm db:migrate --name <change>` | Create a migration from your schema edits and apply it locally |
+| `pnpm db:migrate:create --name <change>` | Create the migration file only, to edit it (e.g. add a data copy) before applying with `pnpm db:migrate` |
+| `pnpm db:deploy` | Apply pending migrations; never resets data (use in CI/CD and production) |
+| `pnpm db:status` | Show pending migrations and drift |
+| `pnpm db:generate` | Regenerate Prisma Client types |
+| `pnpm db:seed` | Seed demo accounts |
+
+**Safety notes**
+
+- Read the migration SQL before applying it. `DROP TABLE`, `DROP COLUMN`, renames, or a new required column on a table with rows can lose data or fail; use `pnpm db:migrate:create` and edit the SQL first.
+- If `pnpm db:migrate` reports drift and asks to **reset the database, answer no** — a reset deletes all data. Drift means the database was changed outside migrations; ask the team before resolving it.
+- Don't change the database by hand or with `prisma db push`; changes made that way have no migration and break other machines.
+- Back up before risky migrations:
+
+  ```bash
+  docker exec erp_postgres pg_dump -U erp_user -d erp_db --no-owner > apps/api/backups/erp_db_$(date +%Y%m%d_%H%M%S).sql
+  ```
 
 ### 🔑 Demo Login Credentials
 

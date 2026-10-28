@@ -1,16 +1,8 @@
-import { IsString, IsNotEmpty, IsEnum, IsOptional } from 'class-validator';
-import { PreviousOrgDocStatus } from '@landsandlands/shared';
+import { Matches } from 'class-validator';
+import { FILE_KEY_PATTERN } from '../../files/file-storage.service';
 
+/** The previous-organisation document that was missing at joining (BR-05). */
 export class SubmitSecondDocDto {
-  @IsEnum(PreviousOrgDocStatus)
-  @IsNotEmpty()
-  previousOrgDocStatus: PreviousOrgDocStatus;
-
-  @IsOptional()
-  @IsString()
-  recordOfIncomeUrl?: string;
-
-  @IsOptional()
-  @IsString()
-  relievingLetterUrl?: string;
+  @Matches(FILE_KEY_PATTERN, { message: 'documentUrl must be a storage key returned by the upload endpoint' })
+  documentUrl: string;
 }

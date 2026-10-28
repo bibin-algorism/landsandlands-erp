@@ -1,0 +1,15 @@
+meta {
+  name: Get Editable Fields
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{baseUrl}}/api/v1/employees/{{employeeId}}/editable-fields
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

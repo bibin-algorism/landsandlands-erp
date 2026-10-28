@@ -1,11 +1,11 @@
 meta {
   name: Direct Edit Employee
   type: http
-  seq: 8
+  seq: 12
 }
 
-put {
-  url: {{baseUrl}}/api/v1/employees/{{employeeId}}/direct-edit
+patch {
+  url: {{baseUrl}}/api/v1/employees/{{employeeId}}
   body: json
   auth: bearer
 }
@@ -20,10 +20,17 @@ headers {
 
 body:json {
   {
-    "fieldUpdates": {
-      "officialPhone": "+919876540099",
-      "probationPeriod": "3 Months"
-    },
-    "reason": "Probation reduced due to prior relevant experience"
+    "expectedUpdatedAt": "<system.updatedAt from Get Employee by ID>",
+    "reason": "Moved to Secondary with revised pay",
+    "changes": {
+      "communication.officialPhone": "9000000001",
+      "employment.vertical": "Secondary",
+      "financial.takeHomePay": {
+        "takeHomePayTotal": 35000,
+        "bankComponent": 33000,
+        "cashComponent": 2000,
+        "effectiveDate": "2026-11-01"
+      }
+    }
   }
 }

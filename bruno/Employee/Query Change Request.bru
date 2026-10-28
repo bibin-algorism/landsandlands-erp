@@ -1,0 +1,28 @@
+meta {
+  name: Query Change Request
+  type: http
+  seq: 21
+}
+
+post {
+  url: {{baseUrl}}/api/v1/employees/change-requests/{{changeRequestId}}/query
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "fieldKeys": [
+      "communication.currentAddress"
+    ],
+    "reason": "The proof is unreadable; upload a clearer copy"
+  }
+}

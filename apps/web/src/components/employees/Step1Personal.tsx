@@ -1,222 +1,142 @@
-import type { CreateEmployeePayload } from '../../api/types'
+import { BLOOD_GROUPS, GENDERS, MARITAL_STATUSES } from '../../constants/employee'
+import { todayIso, type EmployeeFormData } from './employeeForm'
+import { Field, SectionTitle, SelectInput, StepActions, StepHeader } from './FormControls'
+import { inputClass } from './formStyles'
+import { useStepValidation } from './useStepValidation'
 
 export interface Step1PersonalProps {
-  formData: CreateEmployeePayload
-  updateFormData: (data: Partial<CreateEmployeePayload>) => void
+  formData: EmployeeFormData
+  updateFormData: (data: Partial<EmployeeFormData>) => void
   onNext: () => void
 }
 
 export default function Step1Personal({ formData, updateFormData, onNext }: Step1PersonalProps) {
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    onNext()
-  }
-
-  // Derived full name handler
-  const fullName = `${formData.firstName || ''} ${formData.lastName || ''}`.trim()
-  const handleFullNameChange = (val: string) => {
-    const parts = val.trim().split(' ')
-    const firstName = parts[0] || ''
-    const lastName = parts.slice(1).join(' ') || ''
-    updateFormData({ firstName, lastName })
-  }
+  const { errors, handleSubmit } = useStepValidation(1, formData, onNext)
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 text-left">
-      {/* Title & Subtitle */}
-      <div className="space-y-1">
-        <h2 className="text-h4 font-serif font-bold text-primary">Personal</h2>
-        <p className="text-caption text-secondary font-medium">
-          Enter details exactly as on the Aadhaar card.
-        </p>
-      </div>
+    <form onSubmit={handleSubmit} noValidate className="space-y-6 text-left">
+      <StepHeader title="Personal" subtitle="Enter details exactly as on the Aadhaar card." />
 
-      {/* SECTION 1: IDENTITY */}
+      {/* SECTION 1: IDENTITY (BRD 8.1) */}
       <div className="space-y-4 pt-2">
-        <h3 className="text-[11px] font-bold tracking-wider uppercase text-secondary">
-          IDENTITY
-        </h3>
+        <SectionTitle first>IDENTITY</SectionTitle>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Full Name */}
-          <div className="space-y-1.5">
-            <label className="block text-caption font-semibold text-secondary">
-              Full name (as on Aadhaar) <span className="text-error">*</span>
-            </label>
+          <Field label="First name" htmlFor="firstName" error={errors.firstName}>
             <input
+              id="firstName"
               type="text"
-              required
-              value={fullName}
-              onChange={(e) => handleFullNameChange(e.target.value)}
-              placeholder="Priya Raman"
-              className="w-full px-3.5 py-2.5 bg-bg-default border border-border-default rounded-xl text-body-small text-primary placeholder:text-disabled outline-none focus:border-border-strong transition-colors"
+              value={formData.firstName}
+              onChange={(e) => updateFormData({ firstName: e.target.value })}
+              placeholder="Priya"
+              className={inputClass(errors.firstName)}
             />
-          </div>
+          </Field>
 
-          {/* Date of Birth */}
-          <div className="space-y-1.5">
-            <label className="block text-caption font-semibold text-secondary">
-              Date of birth <span className="text-error">*</span>
-            </label>
+          <Field label="Last name / initial" htmlFor="lastName" error={errors.lastName}>
             <input
+              id="lastName"
               type="text"
-              required
+              value={formData.lastName}
+              onChange={(e) => updateFormData({ lastName: e.target.value })}
+              placeholder="Raman"
+              className={inputClass(errors.lastName)}
+            />
+          </Field>
+
+          <Field label="Date of birth" htmlFor="dateOfBirth" error={errors.dateOfBirth}>
+            <input
+              id="dateOfBirth"
+              type="date"
+              max={todayIso()}
               value={formData.dateOfBirth}
               onChange={(e) => updateFormData({ dateOfBirth: e.target.value })}
-              placeholder="14 Mar 1996"
-              className="w-full px-3.5 py-2.5 bg-bg-default border border-border-default rounded-xl text-body-small text-primary outline-none focus:border-border-strong transition-colors"
+              className={inputClass(errors.dateOfBirth)}
             />
-          </div>
+          </Field>
 
-          {/* Gender */}
-          <div className="space-y-1.5">
-            <label className="block text-caption font-semibold text-secondary">
-              Gender <span className="text-error">*</span>
-            </label>
-            <select
+          <Field label="Gender" htmlFor="gender" error={errors.gender}>
+            <SelectInput
+              id="gender"
               value={formData.gender}
-              onChange={(e) => updateFormData({ gender: e.target.value })}
-              className="w-full px-3.5 py-2.5 bg-bg-default border border-border-default rounded-xl text-body-small text-primary outline-none focus:border-border-strong transition-colors"
-            >
-              <option value="Female">Female</option>
-              <option value="Male">Male</option>
-              <option value="Other">Other</option>
-            </select>
-          </div>
+              onChange={(gender) => updateFormData({ gender })}
+              placeholder="Select gender"
+              options={GENDERS}
+              error={errors.gender}
+            />
+          </Field>
 
-          {/* Father's / Spouse's Name */}
-          <div className="space-y-1.5">
-            <label className="block text-caption font-semibold text-secondary">
-              Father's / spouse's name <span className="text-error">*</span>
-            </label>
+          <Field label="Blood group" htmlFor="bloodGroup" error={errors.bloodGroup}>
+            <SelectInput
+              id="bloodGroup"
+              value={formData.bloodGroup}
+              onChange={(bloodGroup) => updateFormData({ bloodGroup })}
+              placeholder="Select blood group"
+              options={BLOOD_GROUPS}
+              error={errors.bloodGroup}
+            />
+          </Field>
+
+          <Field label="Marital status" htmlFor="maritalStatus" error={errors.maritalStatus}>
+            <SelectInput
+              id="maritalStatus"
+              value={formData.maritalStatus}
+              onChange={(maritalStatus) => updateFormData({ maritalStatus })}
+              placeholder="Select marital status"
+              options={MARITAL_STATUSES}
+              error={errors.maritalStatus}
+            />
+          </Field>
+
+          <Field label="Father's name" htmlFor="fatherName" error={errors.fatherName}>
             <input
+              id="fatherName"
               type="text"
-              required
               value={formData.fatherName}
               onChange={(e) => updateFormData({ fatherName: e.target.value })}
-              placeholder="Raman K"
-              className="w-full px-3.5 py-2.5 bg-bg-default border border-border-default rounded-xl text-body-small text-primary placeholder:text-disabled outline-none focus:border-border-strong transition-colors"
+              placeholder="As on identity documents"
+              className={inputClass(errors.fatherName)}
             />
-          </div>
-
-          {/* Blood Group */}
-          <div className="space-y-1.5">
-            <label className="block text-caption font-semibold text-secondary">
-              Blood group <span className="text-error">*</span>
-            </label>
-            <select
-              value={formData.bloodGroup}
-              onChange={(e) => updateFormData({ bloodGroup: e.target.value })}
-              className="w-full px-3.5 py-2.5 bg-bg-default border border-border-default rounded-xl text-body-small text-primary outline-none focus:border-border-strong transition-colors"
-            >
-              <option value="B+">B+</option>
-              <option value="O+">O+</option>
-              <option value="A+">A+</option>
-              <option value="A-">A-</option>
-              <option value="B-">B-</option>
-              <option value="O-">O-</option>
-              <option value="AB+">AB+</option>
-              <option value="AB-">AB-</option>
-            </select>
-          </div>
-
-          {/* Marital Status */}
-          <div className="space-y-1.5">
-            <label className="block text-caption font-semibold text-secondary">
-              Marital status <span className="text-error">*</span>
-            </label>
-            <select
-              value={formData.maritalStatus}
-              onChange={(e) => updateFormData({ maritalStatus: e.target.value })}
-              className="w-full px-3.5 py-2.5 bg-bg-default border border-border-default rounded-xl text-body-small text-primary outline-none focus:border-border-strong transition-colors"
-            >
-              <option value="Single">Single</option>
-              <option value="Married">Married</option>
-            </select>
-          </div>
+          </Field>
         </div>
       </div>
 
-      {/* SECTION 2: GOVERNMENT IDS */}
-      <div className="space-y-4 pt-4 border-t border-border-default/50">
-        <h3 className="text-[11px] font-bold tracking-wider uppercase text-secondary">
-          GOVERNMENT IDS
-        </h3>
+      {/* SECTION 2: GOVERNMENT IDS (BRD 8.3 #1, #3) — images are captured in Documents */}
+      <div className="space-y-4">
+        <SectionTitle>GOVERNMENT IDS</SectionTitle>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Aadhaar Number */}
-          <div className="space-y-1.5">
-            <label className="block text-caption font-semibold text-secondary">
-              Aadhaar number <span className="text-error">*</span>
-            </label>
+          <Field label="Aadhaar number" htmlFor="aadhaarNumber" error={errors.aadhaarNumber}>
             <input
+              id="aadhaarNumber"
               type="text"
-              required
+              inputMode="numeric"
+              maxLength={14}
               value={formData.aadhaarNumber}
               onChange={(e) => updateFormData({ aadhaarNumber: e.target.value })}
               placeholder="5821 9034 4821"
-              className="w-full px-3.5 py-2.5 bg-bg-default border border-border-default rounded-xl text-body-small text-primary placeholder:text-disabled outline-none focus:border-border-strong transition-colors"
+              className={inputClass(errors.aadhaarNumber)}
             />
-            <p className="text-[11px] font-medium text-[#047857] flex items-center gap-1">
-              Checked — no existing employee has this Aadhaar
-            </p>
-          </div>
+          </Field>
 
-          {/* PAN */}
-          <div className="space-y-1.5">
-            <label className="block text-caption font-semibold text-secondary">
-              PAN <span className="text-error">*</span>
-            </label>
+          <Field
+            label="Driving licence number"
+            htmlFor="drivingLicenceNumber"
+            error={errors.drivingLicenceNumber}
+          >
             <input
-              type="text"
-              required
-              value={formData.panNumber || ''}
-              onChange={(e) => updateFormData({ panNumber: e.target.value })}
-              placeholder="ABCPR1234F"
-              className="w-full px-3.5 py-2.5 bg-bg-default border border-border-default rounded-xl text-body-small text-primary placeholder:text-disabled outline-none focus:border-border-strong transition-colors uppercase"
-            />
-          </div>
-
-          {/* Driving Licence Number */}
-          <div className="space-y-1.5">
-            <label className="block text-caption font-semibold text-secondary">
-              Driving licence number <span className="text-error">*</span>
-            </label>
-            <input
+              id="drivingLicenceNumber"
               type="text"
               value={formData.drivingLicenceNumber}
               onChange={(e) => updateFormData({ drivingLicenceNumber: e.target.value })}
-              placeholder="Enter licence number"
-              className="w-full px-3.5 py-2.5 bg-bg-default border border-border-default rounded-xl text-body-small text-primary placeholder:text-disabled outline-none focus:border-border-strong transition-colors"
+              placeholder="TN38 20190012345"
+              className={`${inputClass(errors.drivingLicenceNumber)} uppercase`}
             />
-            <p className="text-[11px] text-secondary">
-              Leave empty only if the employee has none (to confirm)
-            </p>
-          </div>
+          </Field>
         </div>
       </div>
 
-      {/* Form Bottom Action Bar */}
-      <div className="flex items-center justify-between pt-6 border-t border-border-default">
-        <button
-          type="button"
-          disabled
-          className="px-5 py-2 bg-bg-subtle text-disabled border border-border-default rounded-xl text-caption font-semibold opacity-60 cursor-not-allowed"
-        >
-          Back
-        </button>
-
-        <span className="text-caption text-secondary font-medium hidden sm:inline-block">
-          <span className="text-[#047857]">✓</span> Saved automatically · 10:42 am
-        </span>
-
-        <button
-          type="submit"
-          className="px-6 py-2.5 bg-brand-accent text-primary text-caption font-bold rounded-xl hover:opacity-90 transition-opacity cursor-pointer shadow-xs"
-        >
-          Continue to Communication
-        </button>
-      </div>
+      <StepActions nextLabel="Continue to Communication" />
     </form>
   )
 }

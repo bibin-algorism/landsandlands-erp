@@ -74,9 +74,23 @@ export const MENU_ITEMS: MenuItem[] = [
     ),
     children: [
       {
+        id: 'my-profile',
+        label: 'My profile',
+        path: '/my-profile',
+        icon: <img src={employeesIcon} alt="" className="w-4 h-4 shrink-0" />,
+      },
+      {
         id: 'employees',
         label: 'Employees',
         path: '/employees',
+        requiredRoles: ['SUPER_ADMIN', 'ADMIN', 'HR_ADMIN', 'VERTICAL_HEAD'],
+        icon: <img src={employeesIcon} alt="" className="w-4 h-4 shrink-0" />,
+      },
+      {
+        id: 'change-requests',
+        label: 'Change requests',
+        path: '/employees/change-requests',
+        requiredRoles: ['SUPER_ADMIN', 'ADMIN', 'HR_ADMIN'],
         icon: <img src={employeesIcon} alt="" className="w-4 h-4 shrink-0" />,
       },
       {

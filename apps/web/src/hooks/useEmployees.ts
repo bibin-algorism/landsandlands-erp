@@ -1,19 +1,54 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { employeeService } from '../services/employee.service'
-import type { CreateEmployeePayload, CreateEmployeeResponse } from '../api/types'
+import type {
+  CreateEmployeePayload,
+  CreateEmployeeResponse,
+  DirectEditPayload,
+  EmployeeView,
+  EmploymentStatus,
+} from '../api/types'
 
-export function useEmployees(vertical?: string) {
+export function useEmployees(params: { vertical?: string; status?: EmploymentStatus } = {}) {
   return useQuery({
-    queryKey: ['employees', vertical],
-    queryFn: () => employeeService.getEmployees(vertical),
+    queryKey: ['employees', params],
+    queryFn: () => employeeService.getEmployees(params),
   })
 }
 
+/** Pass "me" for the signed-in user's own record. */
 export function useEmployeeDetails(id?: string) {
   return useQuery({
     queryKey: ['employee', id],
-    queryFn: () => employeeService.getEmployeeById(id!),
+    queryFn: () => (id === 'me' ? employeeService.getMyProfile() : employeeService.getEmployeeById(id!)),
     enabled: !!id,
+  })
+}
+
+export function useEditableFields(id?: string) {
+  return useQuery({
+    queryKey: ['employee', id, 'editable-fields'],
+    queryFn: () => employeeService.getEditableFields(id!),
+    enabled: !!id,
+    staleTime: 0,
+  })
+}
+
+export function useEmployeeHistory(id: string | undefined, field?: string, enabled = true) {
+  return useQuery({
+    queryKey: ['employee', id, 'history', field ?? null],
+    queryFn: () => employeeService.getHistory(id!, field),
+    enabled: !!id && enabled,
+  })
+}
+
+export function useDirectEdit(id: string) {
+  const queryClient = useQueryClient()
+  return useMutation<EmployeeView, Error, DirectEditPayload>({
+    mutationFn: (payload) => employeeService.directEdit(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['employee'] })
+      queryClient.invalidateQueries({ queryKey: ['employees'] })
+    },
   })
 }
 

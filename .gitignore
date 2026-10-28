@@ -30,3 +30,9 @@ Thumbs.db
 .idea/
 
 .agents/
+
+# Local file uploads
+apps/api/uploads/
+
+# Local database backups (contain personal data)
+apps/api/backups/

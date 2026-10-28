@@ -1,0 +1,15 @@
+meta {
+  name: Change Request Queue
+  type: http
+  seq: 18
+}
+
+get {
+  url: {{baseUrl}}/api/v1/employees/change-requests?overdue=false
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
