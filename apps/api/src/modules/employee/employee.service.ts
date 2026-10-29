@@ -428,11 +428,10 @@ export class EmployeeService {
   async getPendingOnboardingDocuments() {
     const employees = await this.prisma.employee.findMany({
       where: {
-        OR: [
-          { documentDetail: { isIncompleteFlag: true } },
-          { documentDetail: { secondDocDueDate: { not: null } } },
-        ],
+        employmentStatus: EmploymentStatus.ACTIVE,
+        documentDetail: { isIncompleteFlag: true },
       },
+      orderBy: { documentDetail: { secondDocDueDate: 'asc' } },
       include: {
         documentDetail: true,
         employmentDetail: true,
@@ -464,6 +463,8 @@ export class EmployeeService {
         isOverdue: daysRemaining !== null && daysRemaining < 0,
         trigger29DayNotice: daysSinceJoining >= 29 && emp.documentDetail?.isIncompleteFlag,
         documentDetailStatus: emp.documentDetail?.previousOrgDocStatus,
+        // BR-05: the previous-organisation document still to come
+        missingDocument: emp.documentDetail?.relievingExperienceUrl ? 'PAYSLIPS' : 'RELIEVING_LETTER',
       };
     });
   }

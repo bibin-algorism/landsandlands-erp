@@ -30,7 +30,7 @@ export default function ChangeRequestQueuePage() {
     <AppLayout>
       <div className="space-y-6 text-left w-full pb-16">
         <PageHeader
-          breadcrumbItems={[{ label: 'People', path: '/employees' }, { label: 'Change requests' }]}
+          breadcrumbItems={[{ label: 'Approvals' }, { label: 'Change requests' }]}
           title="Change requests"
         />
 
@@ -58,7 +58,7 @@ export default function ChangeRequestQueuePage() {
             <button
               key={r.id}
               type="button"
-              onClick={() => navigate(`/employees/change-requests/${r.id}`)}
+              onClick={() => navigate(`/approvals/change-requests/${r.id}`)}
               className="w-full text-left bg-white border border-border-default rounded-2xl px-5 py-4 flex flex-wrap items-center justify-between gap-3 hover:border-border-strong cursor-pointer"
             >
               <div className="space-y-0.5">

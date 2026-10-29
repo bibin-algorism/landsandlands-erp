@@ -59,7 +59,7 @@ export default function ChangeRequestDetailPage() {
     try {
       if (mode === 'query') await query.mutateAsync({ id: request.id, fieldKeys: queried, reason: reason.trim() })
       if (mode === 'reject') await reject.mutateAsync({ id: request.id, reason: reason.trim() })
-      navigate('/employees/change-requests')
+      navigate('/approvals/change-requests')
     } catch {
       // shown below
     }
@@ -70,8 +70,8 @@ export default function ChangeRequestDetailPage() {
       <div className="space-y-6 text-left w-full pb-16">
         <PageHeader
           breadcrumbItems={[
-            { label: 'People', path: '/employees' },
-            { label: 'Change requests', path: '/employees/change-requests' },
+            { label: 'Approvals' },
+            { label: 'Change requests', path: '/approvals/change-requests' },
             { label: request.employee.employeeId },
           ]}
           title={`${request.employee.firstName} ${request.employee.lastName}`}
@@ -138,7 +138,7 @@ export default function ChangeRequestDetailPage() {
             <Button variant="primary" size="medium" disabled={!canDecide || hasStale || pending} onClick={async () => {
               try {
                 await approve.mutateAsync(request.id)
-                navigate('/employees/change-requests')
+                navigate('/approvals/change-requests')
               } catch {
                 // shown above
               }

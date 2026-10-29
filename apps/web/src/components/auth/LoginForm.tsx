@@ -18,7 +18,7 @@ export default function LoginForm({ onDeactivatedTest }: LoginFormProps) {
     e.preventDefault()
     if (!empCode || !password) return
 
-    const identifier = empCode.startsWith('LL_') ? empCode : `LL_${empCode}`
+    const identifier = empCode.startsWith('LL-') ? empCode : `LL-${empCode}`
     login({ identifier, password })
   }
 
@@ -64,7 +64,7 @@ export default function LoginForm({ onDeactivatedTest }: LoginFormProps) {
           </label>
           <div className="flex items-center border border-border-default rounded-lg overflow-hidden bg-bg-default focus-within:border-border-strong transition-colors">
             <span className="m-1.5 px-3 py-2 bg-bg-canvas text-secondary text-caption font-medium select-none rounded-sm">
-              LL_
+              LL-
             </span>
             <input
               id="empCode"

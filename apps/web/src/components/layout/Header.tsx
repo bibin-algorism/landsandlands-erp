@@ -1,10 +1,38 @@
 import { useState, useRef, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useLogout } from '../../hooks/useAuth'
+import { useEmployeeDetails } from '../../hooks/useEmployees'
+import { getCurrentUser } from '../../utils/currentUser'
+import type { UserRole } from '../../api/types'
+
+const ROLE_NAMES: Record<UserRole, string> = {
+  SUPER_ADMIN: 'Super Admin',
+  ADMIN: 'Admin',
+  HR_ADMIN: 'HR',
+  VERTICAL_HEAD: 'Vertical Head',
+  EMPLOYEE: 'Employee',
+}
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const navigate = useNavigate()
   const { logout } = useLogout()
+  const user = getCurrentUser()
+  const { data: me } = useEmployeeDetails('me')
+
+  const displayName = me ? `${me.firstName} ${me.lastName}` : (user?.identifier ?? 'User')
+  const initials = me
+    ? `${me.firstName[0] ?? ''}${me.lastName[0] ?? ''}`.toUpperCase()
+    : (user?.identifier ?? 'U').slice(0, 2).toUpperCase()
+  const subtitle = [user?.role ? ROLE_NAMES[user.role] : null, me?.employeeId ?? user?.identifier]
+    .filter(Boolean)
+    .join(' · ')
+
+  const go = (path: string) => {
+    setMenuOpen(false)
+    navigate(path)
+  }
 
   // Close dropdown menu when clicking outside
   useEffect(() => {
@@ -66,17 +94,44 @@ export default function Header() {
             onClick={() => setMenuOpen(!menuOpen)}
             className="w-9 h-9 rounded-full bg-[#E0EAFF] text-[#3538CD] font-semibold text-caption border border-[#B2DDFF] flex items-center justify-center cursor-pointer shadow-xs hover:ring-2 hover:ring-[#B2DDFF] transition-all"
             title="User Profile"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
           >
-            DN
+            {initials}
           </button>
 
           {/* User Dropdown Menu */}
           {menuOpen && (
             <div className="absolute right-0 mt-2 w-56 bg-surface-card border border-border-default rounded-xl shadow-lg py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
               <div className="px-4 py-2.5 border-b border-border-default">
-                <p className="text-body-small font-semibold text-primary">Deepa N</p>
-                <p className="text-caption text-secondary">HR · Password Reset Admin</p>
+                <p className="text-body-small font-semibold text-primary">{displayName}</p>
+                <p className="text-caption text-secondary">{subtitle}</p>
               </div>
+
+              {me && (
+                <div className="py-1 border-b border-border-default">
+                  <button
+                    type="button"
+                    onClick={() => go('/my-profile')}
+                    className="w-full flex items-center gap-2.5 px-4 py-2 text-body-small text-primary hover:bg-bg-subtle transition-colors cursor-pointer text-left font-medium"
+                  >
+                    <svg className="w-4 h-4 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    <span>My profile</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => go('/my-profile/change-requests')}
+                    className="w-full flex items-center gap-2.5 px-4 py-2 text-body-small text-primary hover:bg-bg-subtle transition-colors cursor-pointer text-left font-medium"
+                  >
+                    <svg className="w-4 h-4 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                    </svg>
+                    <span>My change requests</span>
+                  </button>
+                </div>
+              )}
 
               <div className="py-1">
                 <button

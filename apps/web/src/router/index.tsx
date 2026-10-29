@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Navigate, Routes, Route, useParams } from 'react-router-dom'
 import Login from '../pages/auth/Login'
 import ForgotPassword from '../pages/auth/ForgotPassword'
 import ResetPassword from '../pages/auth/ResetPassword'
@@ -17,12 +17,21 @@ import ClientDetailsPage from '../pages/clients/ClientDetailsPage'
 import PasswordResetsPage from '../pages/password-resets/PasswordResetsPage'
 import Home from '../pages/Home'
 import ProtectedRoute from '../components/auth/ProtectedRoute'
+import DocumentTitle from './DocumentTitle'
 
 import ButtonShowcasePage from '../pages/ButtonShowcasePage'
+import PendingDocumentsPage from '../pages/approvals/PendingDocumentsPage'
+
+/** Old /employees/change-requests/:id links → Approvals. */
+function ChangeRequestRedirect() {
+  const { id } = useParams<{ id: string }>()
+  return <Navigate to={`/approvals/change-requests/${id}`} replace />
+}
 
 export default function AppRouter() {
   return (
     <BrowserRouter>
+      <DocumentTitle />
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<Login />} />
@@ -56,10 +65,20 @@ export default function AppRouter() {
           <Route path="/employees/:employeeId/edit" element={<EmployeeEditPage />} />
         </Route>
 
-        {/* Change-request review: HR, and the MD for HR's own records (FR-18) */}
+        {/* Approvals: work waiting for a decision */}
         <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'HR_ADMIN']} />}>
-          <Route path="/employees/change-requests" element={<ChangeRequestQueuePage />} />
-          <Route path="/employees/change-requests/:id" element={<ChangeRequestDetailPage />} />
+          {/* Change-request review: HR, and the MD for HR's own records (FR-18) */}
+          <Route path="/approvals/change-requests" element={<ChangeRequestQueuePage />} />
+          <Route path="/approvals/change-requests/:id" element={<ChangeRequestDetailPage />} />
+          <Route path="/approvals/password-resets" element={<PasswordResetsPage />} />
+          {/* Previous paths, kept so existing links still work */}
+          <Route path="/employees/change-requests" element={<Navigate to="/approvals/change-requests" replace />} />
+          <Route path="/employees/change-requests/:id" element={<ChangeRequestRedirect />} />
+          <Route path="/people/password-resets" element={<Navigate to="/approvals/password-resets" replace />} />
+          <Route path="/people/password-reset-requests" element={<Navigate to="/approvals/password-resets" replace />} />
+        </Route>
+        <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'HR_ADMIN']} />}>
+          <Route path="/approvals/pending-documents" element={<PendingDocumentsPage />} />
         </Route>
 
         {/* Admin Restricted Routes */}
@@ -78,8 +97,6 @@ export default function AppRouter() {
           <Route path="/clients/:clientId" element={<ClientDetailsPage />} />
           <Route path="/people/clients/:clientId" element={<ClientDetailsPage />} />
 
-          <Route path="/people/password-resets" element={<PasswordResetsPage />} />
-          <Route path="/people/password-reset-requests" element={<PasswordResetsPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

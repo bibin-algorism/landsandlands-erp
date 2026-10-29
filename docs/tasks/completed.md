@@ -4,7 +4,7 @@ What is built and working in Lands & Lands ERP 5.0. Open work is tracked in [pen
 
 **How to update:** when a pending task is finished, move its row here under the right module, keep its ID, and add the date and a short reference (PR, doc or path).
 
-_Last updated: 28 Oct 2026_
+_Last updated: 29 Oct 2026_
 
 ---
 
@@ -60,6 +60,8 @@ _Last updated: 28 Oct 2026_
 | EMP-15 | HR's own requests routed to the MD; no one decides their own request | FR-18, BR-16 | 28 Oct 2026 | — |
 | EMP-16 | 24-hour review/reply windows with overdue flag and filter | FR-22 | 28 Oct 2026 | `/employees/change-requests` |
 | EMP-17 | Every change-request step audited and queued as an outbox event | FR-23 (event only), FR-25 | 28 Oct 2026 | `outbox_events` |
+| EMP-18 | Details and edit pages in the Figma layout: summary card, "Show:" sections, Documents panel, inline edit with "Changed from", restricted fields locked, confirm / discard dialogs, saved toast with highlighted fields | FR-14, FR-24 | 29 Oct 2026 | `/employees/:id/edit` |
+| EMP-19 | Approvals menu (Change requests, Password resets, Pending documents) with live counts; Pending documents screen to submit the missing previous-organisation document; Roles & access moved to Administration | FR-07, FR-18 | 29 Oct 2026 | `/approvals/*` |
 
 ## Client module
 

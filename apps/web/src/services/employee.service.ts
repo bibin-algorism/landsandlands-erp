@@ -8,6 +8,7 @@ import type {
   EmployeeView,
   EmploymentStatus,
   HistoryEntry,
+  PendingDocumentItem,
 } from '../api/types'
 
 /** Fetch a protected file with the session token and open it in a new tab. */
@@ -64,6 +65,15 @@ export const employeeService = {
 
   openDocument(id: string, document: string): Promise<void> {
     return openProtectedFile(`/employees/${id}/documents/${document}`)
+  },
+
+  async getPendingDocuments(): Promise<PendingDocumentItem[]> {
+    const res = await apiClient.get<PendingDocumentItem[]>('/employees/onboarding/pending-documents')
+    return res.data
+  },
+
+  async submitSecondDocument(id: string, documentUrl: string): Promise<void> {
+    await apiClient.post(`/employees/${id}/second-document`, { documentUrl })
   },
 
   openDocumentByKey(id: string, key: string): Promise<void> {

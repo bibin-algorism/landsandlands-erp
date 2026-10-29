@@ -12,7 +12,7 @@ import { FieldValueError } from './field-values';
 /**
  * Catalogue of editable employee fields (BRD Section 8; docs/employee_edit_implementation_plan.md §3.1).
  * Every HR direct edit and every change request is validated and applied through these definitions.
- * Not listed, therefore never editable: Employee ID (BR-01), system data and metadata (BR-11),
+ * Not listed, therefore never editable: Employee ID (BR-01), joining date, system data and metadata (BR-11),
  * employment status and exit details (exit flow), previous-organisation documents (second-document flow).
  */
 
@@ -349,7 +349,6 @@ export const EMPLOYEE_FIELDS: FieldDefinition[] = [
     },
   },
   scalar({ key: 'employment.jobType', label: 'Job type', group: 'EMPLOYMENT', sensitivity: 'INTERNAL', type: 'select', model: 'employment', column: 'jobType', normalize: v.oneOf(Object.values(JobType)), options: JOB_TYPE_OPTIONS, requestable: false }),
-  scalar({ key: 'employment.joiningDate', label: 'Joining date', group: 'EMPLOYMENT', sensitivity: 'INTERNAL', type: 'date', model: 'employment', column: 'joiningDate', normalize: v.date, isDate: true, requestable: false }),
   {
     ...scalar({ key: 'employment.reportingAuthorityId', label: 'Reporting authority', group: 'EMPLOYMENT', sensitivity: 'INTERNAL', type: 'employeeRef', model: 'employment', column: 'reportingAuthorityId', normalize: v.uuid, requestable: false }),
     normalize: async (value, ctx) => {

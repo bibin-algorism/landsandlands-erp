@@ -9,7 +9,7 @@ Work not yet done in Lands & Lands ERP 5.0. Completed work is tracked in [comple
 - **Status:** `Not started` · `In progress` · `Blocked` · `Decision needed` (cannot start until the question in Notes is answered).
 - **Priority:** `P1` needed for the 1 March launch or fixes a security/data risk · `P2` launch scope, lower risk · `P3` after launch or nice to have.
 
-_Last updated: 28 Oct 2026_
+_Last updated: 29 Oct 2026_
 
 ---
 
@@ -45,6 +45,10 @@ _Last updated: 28 Oct 2026_
 | EMP-P11 | Database unique constraint on Aadhaar number (today checked in code only) | BRD §14 | P2 | Not started | | |
 | EMP-P12 | Browser QA pass of onboarding, edit, change-request and review screens with HR, VH, employee and MD logins | — | P1 | Not started | | Backend covered by API tests; screens not yet clicked through |
 | EMP-P13 | Existing employees created before 28 Oct: recalculate login role from vertical/role; backfill created-by where known | — | P3 | Not started | | One-off data fix |
+| EMP-P14 | Warn about unsaved edits when leaving the edit page through the sidebar or browser Back (needs the data router, `createBrowserRouter`) | — | P3 | Not started | | Cancel button and tab close/reload already warn |
+| EMP-P15 | Document verification ("Checked against original") — record who verified each document and when | — | P3 | Decision needed | | Shown in Figma; not in the BRD data model |
+| EMP-P16 | Restyle "Request a change" (employee) to match the new edit layout | — | P3 | Not started | | |
+| EMP-P17 | How HR changes restricted data (pay revision, bank details, Aadhaar/licence) now that the edit page locks it | BR-08, BR-13 | P2 | Decision needed | | API supports it; no screen does |
 
 ## Notifications & outbox
 

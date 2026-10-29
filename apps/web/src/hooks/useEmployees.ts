@@ -21,6 +21,8 @@ export function useEmployeeDetails(id?: string) {
     queryKey: ['employee', id],
     queryFn: () => (id === 'me' ? employeeService.getMyProfile() : employeeService.getEmployeeById(id!)),
     enabled: !!id,
+    // "me" is read by the header on every page; accounts without an employee record get a 404.
+    ...(id === 'me' && { retry: false, staleTime: 5 * 60 * 1000 }),
   })
 }
 
@@ -70,3 +72,25 @@ export function useCreateEmployee() {
     error: mutation.error?.message || null,
   }
 }
+
+/** FR-07: employees still owing a previous-organisation document (HR only). */
+export function usePendingDocuments(enabled = true) {
+  return useQuery({
+    queryKey: ['pending-documents'],
+    queryFn: () => employeeService.getPendingDocuments(),
+    enabled,
+  })
+}
+
+export function useSubmitSecondDocument() {
+  const queryClient = useQueryClient()
+  return useMutation<void, Error, { id: string; documentUrl: string }>({
+    mutationFn: ({ id, documentUrl }) => employeeService.submitSecondDocument(id, documentUrl),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pending-documents'] })
+      queryClient.invalidateQueries({ queryKey: ['employees'] })
+      queryClient.invalidateQueries({ queryKey: ['employee'] })
+    },
+  })
+}
+

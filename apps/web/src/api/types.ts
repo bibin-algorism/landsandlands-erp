@@ -430,6 +430,23 @@ export interface ChangeRequestFieldInput {
   proofFileKey?: string
 }
 
+/** GET /employees/onboarding/pending-documents (FR-07, FR-08) */
+export interface PendingDocumentItem {
+  employeeId: string
+  employeeCode: string
+  firstName: string
+  lastName: string
+  officialEmail: string | null
+  officialPhone: string | null
+  joiningDate: string
+  daysSinceJoining: number
+  secondDocDueDate: string | null
+  daysRemaining: number | null
+  isOverdue: boolean
+  trigger29DayNotice: boolean
+  missingDocument: 'RELIEVING_LETTER' | 'PAYSLIPS'
+}
+
 // Client Types & Payloads
 export type ClientType = 'INDIVIDUAL' | 'CORPORATE'
 export type ClientStatus = 'ACTIVE' | 'INACTIVE' | 'PROSPECT' | 'ARCHIVED'

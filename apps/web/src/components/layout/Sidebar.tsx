@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { useLogout } from '../../hooks/useAuth'
 import { logoFull, logoRail } from '../../utils/images'
 import { MENU_ITEMS, type MenuItem, type SubMenuItem } from '../../constants/sidebar'
+import { useApprovalCounts } from '../../hooks/useApprovalCounts'
 import type { UserSummary, UserRole } from '../../api/types'
 
 export default function Sidebar() {
@@ -37,6 +38,11 @@ export default function Sidebar() {
 
   const userRole: UserRole = currentUser?.role || 'EMPLOYEE'
   const userPermissions = currentUser?.permissions || []
+  const approvalCounts = useApprovalCounts()
+
+  /** Live queue count when the item has one, otherwise its static badge. */
+  const badgeFor = (child: SubMenuItem) =>
+    child.badgeQueue ? approvalCounts[child.badgeQueue] : child.badgeCount
 
   const hasAccess = (item: { requiredRoles?: UserRole[]; requiredPermission?: string }) => {
     if (userRole === 'SUPER_ADMIN' || userPermissions.includes('*')) return true
@@ -57,14 +63,6 @@ export default function Sidebar() {
 
   const isSubItemActive = (child: SubMenuItem) => {
     if (!child.path || child.path.startsWith('#')) return false
-    if (child.path === '/people/password-reset-requests') {
-      return (
-        location.pathname === '/people/password-reset-requests' ||
-        location.pathname.startsWith('/people/password-reset-requests/') ||
-        location.pathname === '/people/password-resets' ||
-        location.pathname.startsWith('/people/password-resets/')
-      )
-    }
     return location.pathname === child.path || location.pathname.startsWith(`${child.path}/`)
   }
 
@@ -245,9 +243,9 @@ export default function Sidebar() {
                                     </span>
                                   </div>
                                 </div>
-                                {child.badgeCount !== undefined && (
+                                {!!badgeFor(child) && (
                                   <span className="bg-brand-accent text-primary text-[11px] font-bold py-0.5 px-2 rounded-full">
-                                    {child.badgeCount}
+                                    {badgeFor(child)}
                                   </span>
                                 )}
                               </>
